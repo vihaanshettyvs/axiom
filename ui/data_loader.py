@@ -16,11 +16,32 @@ def list_json_files() -> list[Path]:
                     seen.add(p.resolve())
                     found.append(p)
     return found
+LABELS = {
+    "out/demo/runlog_brain_on.json": "1. Primary Demo (Seed 42) - Brain ON",
+    "out/demo/runlog_brain_off.json": "2. Primary Demo (Seed 42) - Brain OFF",
+    "out/demo/comparison.json": "3. Primary Demo - ON vs OFF Comparison",
+    "out/demo/p4_report.json": "4. Primary Demo - P4 Sensing Report",
+    "out/firms_demo/runlog_brain_on.json": "5. NASA FIRMS Wildfires - Brain ON",
+    "out/firms_demo/runlog_brain_off.json": "6. NASA FIRMS Wildfires - Brain OFF",
+    "out/firms_demo/comparison.json": "7. NASA FIRMS Wildfires - Comparison",
+    "out/firms_demo/p4_report.json": "8. NASA FIRMS Wildfires - P4 Report",
+    "out/firms_validation.json": "9. NASA FIRMS - 6-Seed Validation",
+    "out/backup/runlog_brain_on.json": "10. Backup Demo (Seed 7) - Brain ON",
+    "out/backup/runlog_brain_off.json": "11. Backup Demo (Seed 7) - Brain OFF",
+    "out/backup/comparison.json": "12. Backup Demo - ON vs OFF Comparison",
+    "out/validation.json": "13. Full Multi-Seed Validation",
+}
+
 def format_json_label(p: Path) -> str:
     try:
-        return str(p.relative_to(ROOT_DIR))
+        rel = str(p.relative_to(ROOT_DIR))
     except ValueError:
-        return p.name
+        rel = p.name
+    if rel in LABELS:
+        return LABELS[rel]
+    stem = p.stem.replace("_", " ").title()
+    folder = p.parent.name.replace("_", " ").title()
+    return f"{folder} - {stem}" 
 def _sat_pos_from_orbital(sat: dict, t: int, dt_min: float = 1.0) -> tuple[float, float]:
     if "lat" in sat and "lon" in sat:
         return float(sat["lat"]), float(sat["lon"])
