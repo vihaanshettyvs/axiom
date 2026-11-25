@@ -36,3 +36,25 @@ Same scenario, luckier start: a satellite is overhead when the leak begins, so t
 | 69-88 | SAT-09 dodges the debris that threatens it; SAT-12 takes over the leak watch at t=88. | DODGE, REASSIGN |
 | 94, 161 | Drone is sent back to the leak twice more. | DISPATCH_DRONE |
 | 100-140 | SAT-10 requests the tug when it is free again; serviced t=125-140. | TUG_REQUEST, SERVICING, SERVICED |
+
+# Real-data variant (NASA FIRMS wildfires)
+
+`python engine.py --mode both --seed 2 --firms data/firms/sample_viirs_snpp.csv --out out/firms_demo`
+(file: `data/firms/sample_viirs_snpp.csv`, on P4's branch). Log: `out/firms_demo/`. Table for 6 seeds: `out/firms_validation.json`
+(`python validate_firms.py data/firms/sample_viirs_snpp.csv`).
+
+- **Real:** wildfire positions, strength and timing from NASA FIRMS VIIRS S-NPP (2023-07-12). The densest 100x100 km window in the global file
+  is centred at 59.45 N, 112.64 W (northern Alberta); three fires come out of it (FIRE-1..3). `scenario.hazards[].source = "NASA_FIRMS"`.
+- **Still simulated:** how the fires spread, sensors and noise, the methane leaks (LEAK-1 landfill, LEAK-2), debris, satellites, HAPS, drone, tug.
+- Minutes from hazard start to a confirmed localization, mean over 6 seeds (how many of the 6 found it in brackets):
+
+| hazard | Brain ON | Brain OFF |
+|---|---|---|
+| FIRE-1 (real) | 27.5 (6/6) | 89.6 (5/6) |
+| FIRE-2 (real) | 55.7 (6/6) | 86.5 (2/6) |
+| FIRE-3 (real) | 10.2 (6/6) | 62.4 (5/6) |
+| LEAK-1 landfill (simulated) | 45.7 (6/6) | 82.6 (5/6) |
+| **LEAK-2 (simulated)** | **2.0 (1/6)** | **93.4 (5/6)** |
+
+- Data sent: about 318 MB (ON) vs 24,563 MB (OFF). Uncontrolled dead satellites: 0 vs 1 per run. Fuel about equal (1.27 vs 1.26 kg). Invalid actions: 0 in all 12 runs.
+- **Weakness to disclose:** with the real fires competing for attention, the brain finds the second methane leak (LEAK-2) on only 1 of 6 seeds; the OFF lawnmower finds it on 5 of 6.

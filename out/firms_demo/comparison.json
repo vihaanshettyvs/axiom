@@ -1,0 +1,60 @@
+{
+  "seed": 2,
+  "metrics": {
+    "mean_loc_error_km": {
+      "brain_on": 8.40823,
+      "brain_off": 17.17566,
+      "improvement_pct": 51.04569
+    },
+    "mean_time_to_detect_min": {
+      "brain_on": 28.0,
+      "brain_off": 73.4,
+      "improvement_pct": 61.85286
+    },
+    "mean_time_to_localize_min": {
+      "brain_on": 28.0,
+      "brain_off": 77.0,
+      "improvement_pct": 63.63636
+    },
+    "mean_detection_latency_min": {
+      "brain_on": 2.14286,
+      "brain_off": 29.34906,
+      "improvement_pct": 92.69872
+    },
+    "false_alarm_tracks": {
+      "brain_on": 1,
+      "brain_off": 1,
+      "improvement_pct": 0.0
+    },
+    "fuel_used_kg": {
+      "brain_on": 1.29481,
+      "brain_off": 1.26387,
+      "improvement_pct": -2.44758
+    },
+    "bandwidth_mb": {
+      "brain_on": 339.76,
+      "brain_off": 24840.0,
+      "improvement_pct": 98.63221
+    },
+    "attention_alerts": {
+      "brain_on": 7,
+      "brain_off": 109,
+      "improvement_pct": 93.57798
+    },
+    "sats_lost": {
+      "brain_on": 0,
+      "brain_off": 0,
+      "improvement_pct": 0.0
+    },
+    "expected_sat_loss": {
+      "brain_on": 0.00418,
+      "brain_off": 0.09563,
+      "improvement_pct": 95.62746
+    },
+    "uncontrolled_dead": {
+      "brain_on": 0,
+      "brain_off": 1,
+      "improvement_pct": 100.0
+    }
+  }
+}

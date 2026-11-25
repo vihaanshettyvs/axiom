@@ -662,8 +662,11 @@ if __name__ == "__main__":
     ap.add_argument("--duration", type=int, default=config.DURATION_MIN)
     ap.add_argument("--out", default=config.OUT_DIR)
     ap.add_argument("--mock-all", action="store_true", help="run with every module mocked")
+    ap.add_argument("--firms", default=None, help="path to a NASA FIRMS active-fire CSV (real wildfires; leaks/debris stay simulated)")
     a = ap.parse_args()
     ur = {k: False for k in config.USE_REAL} if a.mock_all else None
+    if a.firms:
+        config.WILDFIRE_DATA_PATH = a.firms
     if a.mode == "both":
         _print(compare(a.seed, a.duration, a.out, ur))
         print(f"wrote {a.out}/runlog_brain_on.json, runlog_brain_off.json, comparison.json")

@@ -57,3 +57,8 @@ Simplifications that remain, stated plainly:
 - Up to 3 wildfires are made from the strongest clusters (by FRP) inside that window; their start times are minutes after the first detection in the window, capped at 90 min (the real detections are spread over a day; the sim is 180 min).
 - Real data is only the wildfire positions/strength/timing. The spread dynamics, sensors, methane leaks, debris and satellites remain simulated.
 - Credit: "NASA FIRMS VIIRS S-NPP historical sample data (sample_viirs_snpp_071223.csv)". Download date not recorded by P4.
+
+## v1.6 -- real FIRMS run
+- Verified on the real file (74,604 detections, 2023-07-12): densest window = (59.4488 N, -112.6419 E); `FIRE-1..3` come from it. A cluster's starting radius is capped at 4.8 km (it must stay below `rmax` = 8 km). Fire start times for `FIRE-2/3` hit the 90-min cap, because the real detections in that window are hours apart.
+- With real fires the brain is worse than the baseline at LEAK-2 (found on 1/6 seeds vs 5/6). Not tuned.
+- `data/firms/sample_viirs_snpp.csv` (6 MB) lives on P4's branch; `tests/test_firms_real.py` skips if it is absent.

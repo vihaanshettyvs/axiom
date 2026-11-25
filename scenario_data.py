@@ -136,7 +136,7 @@ def load_firms_csv(path: str, max_fires: int = 3, cluster_km: float = 8.0, max_s
         x, y = sum(p[0] * p[2] for p in c) / w, sum(p[1] * p[2] for p in c) / w
         specs.append(dict(id=f"FIRE-{i + 1}", kind="wildfire", pos=(round(x, 3), round(y, 3)),
                           t_start=round(min(max(min(p[3] for p in c), 0.0), max_start_min), 1),
-                          radius0=round(1.5 + 0.5 * math.sqrt(len(c)), 2), rmax=8.0, expansion=0.03,
+                          radius0=round(min(1.5 + 0.5 * math.sqrt(len(c)), 4.8), 2), rmax=8.0, expansion=0.03,
                           wind=(0.08, 0.04), wind_turn=0.003 * (1 if i % 2 == 0 else -1),
                           int0=round(0.25 + 0.6 * max(p[2] for p in c) / fmax, 3), int_rate=0.006))
     return specs
