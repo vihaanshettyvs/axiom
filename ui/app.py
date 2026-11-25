@@ -1,135 +1,109 @@
 import sys
-import time
 from pathlib import Path
+
 import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from data_loader import (
-    evaluate_frame,
-    list_json_files,
-    load_mock_runlog,
-    load_runlog_from_bytes,
-    load_runlog_from_path,
-)
-from map_view import build_map_figure
-from panels import render_kpi_cards, render_target_table
-from retire_lab import render_retire_lab
+import theme
+from data_loader import (decisions_upto, events_upto, frame_at, list_runlogs, load_bytes, load_path, pick_default)
+from map_view import build_map
+from panels import (render_decisions, render_events, render_hero, render_kpis, render_retirement_lab,
+                    render_satellite_table, render_status_strip, render_summary, render_timeline)
 
-st.set_page_config(page_title="Orbital Triage Mission Control", layout="wide")
+st.set_page_config(page_title="ORBITA Mission Control", page_icon="🛰️", layout="wide")
+theme.inject()
 
-if "t_idx" not in st.session_state:
-    st.session_state.t_idx = 0
-if "is_playing" not in st.session_state:
-    st.session_state.is_playing = False
-if "retired_sats" not in st.session_state:
-    st.session_state.retired_sats = set()
+st.session_state.setdefault("t_slider", 0)
+st.session_state.setdefault("last_click", None)
+
+
+def key_of(log: dict) -> str:
+    return f"{log.get('_name', '')}|{log['meta'].get('mode')}"
+
+
+def pick_log(label: str, mode: str):
+    paths = list_runlogs()
+    log = None
+    if paths:
+        i = st.selectbox(f"{label} RunLog", range(len(paths)), index=pick_default(paths, mode),
+                         format_func=lambda k: paths[k].name, key=f"sel_{mode}")
+        log = load_path(str(paths[i]))
+    up = st.file_uploader(f"Or upload {label} RunLog", type=["json"], key=f"up_{mode}")
+    if up is not None:
+        log = load_bytes(up.getvalue(), up.name)
+    return log
+
 
 with st.sidebar:
-    st.title("Mission Controls")
-    brain_on = st.toggle("Brain ON (Triage AI)", value=True)
+    st.markdown("### 🛰️ Mission Controls")
+    view = st.radio("View", ["Brain ON", "Brain OFF", "Side by side"], index=0)
+    belief = st.toggle("Show brain belief heatmap", value=False, help="Where the agent believes hazards are (adds data to the animation).")
+    weather = st.slider("Space weather (retirement lab)", 0.0, 1.0, 0.5, 0.25)
     st.divider()
+    try:
+        log_on = pick_log("Brain ON", "BRAIN_ON")
+        log_off = pick_log("Brain OFF", "BRAIN_OFF")
+    except Exception as e:
+        st.error(str(e))
+        st.stop()
 
-    st.subheader("RunLog Data Source")
-    data_mode = st.radio("Source", ["Mock Data", "Real RunLog JSON"], index=0)
-
-    runlog = None
-    if data_mode == "Real RunLog JSON":
-        json_files = list_json_files()
-        if json_files:
-            selected_file = st.selectbox(
-                "Select JSON from data/",
-                options=json_files,
-                format_func=lambda p: p.name,
-            )
-            runlog = load_runlog_from_path(selected_file)
-        else:
-            st.info("No .json files found in data/ yet. Upload one below:")
-
-        uploaded = st.file_uploader("Or upload RunLog JSON", type=["json"])
-        if uploaded is not None:
-            runlog = load_runlog_from_bytes(uploaded)
-
-    if runlog is None:
-        runlog = load_mock_runlog()
-
-    st.caption(f"Loaded: **{runlog['meta'].get('scenario', 'RunLog')}**")
-    st.caption(f"Retired satellites: **{len(st.session_state.retired_sats)}**")
-
-frames = runlog.get("frames", [])
-targets = runlog.get("targets", [])
-num_frames = len(frames)
-
-if num_frames == 0:
-    st.error("Loaded RunLog has 0 frames. Check your JSON structure.")
+if log_on is None and log_off is None:
+    st.error("No RunLog found. Put runlog_*.json files in data/runlogs/ or upload them in the sidebar.")
     st.stop()
 
-st.session_state.t_idx = min(st.session_state.t_idx, num_frames - 1)
+if view == "Side by side" and not (log_on and log_off):
+    st.warning("Side by side needs both logs; showing the one that is loaded.")
+    view = "Brain ON"
+primary = log_on if view != "Brain OFF" else log_off
+primary = primary or log_on or log_off
+secondary = log_off if primary is log_on else log_on
+primary_label = "Brain ON" if primary is log_on else "Brain OFF"
+secondary_label = "Brain OFF" if primary is log_on else "Brain ON"
+n_frames = min(len(l["frames"]) for l in (log_on, log_off) if l)
+st.session_state.t_slider = min(st.session_state.t_slider, n_frames - 1)
 
-st.title("Orbital Triage Dashboard")
-
-p1, p2, p3, p4 = st.columns([1.2, 1.0, 1.4, 5.4])
-
-with p1:
-    play_label = "Pause" if st.session_state.is_playing else "Play"
-    if st.button(play_label, width="stretch"):
-        st.session_state.is_playing = not st.session_state.is_playing
+# Minute control: slider (or click on the timeline below).
+sc1, sc2 = st.columns([1, 14])
+with sc1:
+    if st.button("⟲", width="stretch", help="Reset to minute 0"):
+        st.session_state.t_slider = 0
         st.rerun()
+with sc2:
+    t = st.slider("Snapshot minute", 0, n_frames - 1, key="t_slider", label_visibility="collapsed")
 
-with p2:
-    if st.button("Reset", width="stretch"):
-        st.session_state.is_playing = False
-        st.session_state.t_idx = 0
-        st.rerun()
+frame = frame_at(primary, t)
+render_hero(primary["meta"], frame, primary_label)
+render_kpis(primary, key_of(primary), t, secondary if secondary is not primary else None,
+            key_of(secondary) if secondary else "", secondary_label)
 
-with p3:
-    speed = st.selectbox("Speed", ["1x", "2x", "5x"], index=0, label_visibility="collapsed")
+if view == "Side by side":
+    a, b = st.columns(2)
+    a.plotly_chart(build_map(log_on, t, "Brain ON", belief), width="stretch", key="map_on")
+    b.plotly_chart(build_map(log_off, t, "Brain OFF", belief), width="stretch", key="map_off")
+else:
+    st.plotly_chart(build_map(primary, t, primary_label, belief), width="stretch", key="map_main")
+st.caption("Press ▶ Play on the map for smooth playback. The slider above sets the snapshot used by the cards and panels; "
+           "click a marker on the timeline to jump to that moment.")
+render_status_strip(frame)
 
-with p4:
-    slider_val = st.slider(
-        "Simulation Timestep",
-        min_value=0,
-        max_value=num_frames - 1,
-        value=st.session_state.t_idx,
-        label_visibility="collapsed",
-    )
-    if slider_val != st.session_state.t_idx:
-        st.session_state.t_idx = slider_val
-
-current_frame = frames[st.session_state.t_idx]
-st.caption(f"Frame **{st.session_state.t_idx + 1} / {num_frames}** — `{current_frame.get('timestamp', '')}`")
-
-active_mode = "brain_on" if brain_on else "brain_off"
-retired_set = st.session_state.retired_sats
-
-active_eval = evaluate_frame(current_frame, targets, active_mode, retired_set)
-baseline_eval = evaluate_frame(current_frame, targets, "brain_off", retired_set)
-no_retire_eval = evaluate_frame(current_frame, targets, active_mode, set())
-
-render_kpi_cards(active_eval, baseline_eval, brain_on)
-st.divider()
-
-map_col, lab_col = st.columns([2.6, 1.2])
-
-with map_col:
-    fig = build_map_figure(
-        satellites=active_eval["satellites"],
-        targets=targets,
-        covered_ids=active_eval["covered_ids"],
-    )
-    st.plotly_chart(fig, width="stretch")
-    render_target_table(active_eval)
-
-with lab_col:
-    render_retire_lab(
-        satellites=active_eval["satellites"],
-        eval_no_retire=no_retire_eval,
-        eval_with_retire=active_eval,
-        brain_on=brain_on,
-    )
-
-if st.session_state.is_playing:
-    delay_map = {"1x": 0.6, "2x": 0.3, "5x": 0.12}
-    time.sleep(delay_map[speed])
-    st.session_state.t_idx = (st.session_state.t_idx + 1) % num_frames
+st.markdown("##### Event timeline")
+clicked = render_timeline(primary, key_of(primary), t)
+if clicked is not None and clicked != st.session_state.last_click:
+    st.session_state.last_click = clicked
+    st.session_state.t_slider = min(clicked, n_frames - 1)
     st.rerun()
+
+tab_dec, tab_ev, tab_sat, tab_lab, tab_sum = st.tabs(
+    ["Decisions", "Events", "Satellites", "Retirement Lab", "Final comparison"])
+with tab_dec:
+    st.caption("Why the agent acted (routine OBSERVE actions hidden).")
+    render_decisions(decisions_upto(primary, t))
+with tab_ev:
+    render_events(events_upto(primary, t))
+with tab_sat:
+    render_satellite_table(frame)
+with tab_lab:
+    render_retirement_lab(primary, frame, weather)
+with tab_sum:
+    render_summary(log_on, log_off)
