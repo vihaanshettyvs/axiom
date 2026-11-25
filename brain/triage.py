@@ -268,6 +268,16 @@ class TriageBrain:
             cands: List[Decision] = []
             sat_val = (0.4 + 0.6 * s.mission_importance) * s.health
             # DODGE
+            # Collision Avoidance 2.0: P2 may supply a per-encounter assessment (miss distance before/after the burn,
+            # risk tier, feasibility). Absent on mock physics -> the original economics below apply unchanged.
+            assess_fn = getattr(self.physics, "assess_conjunction", None)
+            asm: Dict[str, Dict[str, Any]] = {}
+            if callable(assess_fn):
+                try:
+                    asm = {x["debris_id"]: x for x in assess_fn(s, view.t)}
+                except Exception:                                    # noqa: BLE001 - advisory data only
+                    asm = {}
+            ahead = {cc.debris_id for cc in view.conjunctions.get(s.id, [])}
             for c in view.conjunctions.get(s.id, []):
                 if (s.id, c.debris_id) in view.dodged:
                     continue
@@ -276,6 +286,15 @@ class TriageBrain:
                 eff = self.physics.dodge_effectiveness(s, lead)
                 if s.fuel_kg < cost + config.FUEL_RESERVE_KG:
                     continue
+                av = asm.get(c.debris_id)
+                if av is not None:
+                    if not av["feasible"] or not av["projected_improved"]:
+                        continue                   # propulsion lost, no fuel margin, or the burn would not move the miss distance
+                    # propellant is finite: do not spend it on this encounter if a riskier one still ahead needs it
+                    held = sum(o["dodge_fuel_kg"] for k, o in asm.items() if k != c.debris_id and k in ahead
+                               and (s.id, k) not in view.dodged and o["feasible"] and o["risk_score"] > av["risk_score"])
+                    if s.fuel_kg < cost + config.FUEL_RESERVE_KG + held:
+                        continue
                 rr = c.probability * eff
                 rf = 0.2 + 0.8 * _clip((s.rul_min - lead) / 150.0)
                 ben = config.LOSS_VALUE * sat_val * rf * rr - config.FUEL_VALUE * cost
@@ -283,7 +302,15 @@ class TriageBrain:
                     why = (f"{s.id} dodges {c.debris_id} now ({lead:.0f} min before closest approach) because the "
                            f"{c.probability:.1%} collision risk outweighs the {cost:.3f} kg burn, and acting early "
                            f"removes {eff:.0%} of the risk at the lowest fuel price.")
-                    a = Action(ActionType.DODGE, s.id, target_id=c.debris_id, params={"lead": lead, "eff": eff})
+                    prm = {"lead": lead, "eff": eff}
+                    if av is not None:
+                        why += (f" Risk tier {av['risk_tier']} (score {av['risk_score']:.3f}); predicted miss "
+                                f"{av['predicted_miss_km']:.1f} km -> {av['predicted_miss_after_km']:.1f} km after the burn "
+                                f"(projected: {av['projected_outcome'].lower()}).")
+                        prm.update(risk_tier=av["risk_tier"], risk_score=av["risk_score"],
+                                   miss_km=av["predicted_miss_km"], miss_after_km=av["predicted_miss_after_km"],
+                                   projected_outcome=av["projected_outcome"])
+                    a = Action(ActionType.DODGE, s.id, target_id=c.debris_id, params=prm)
                     cands.append(_mk(view.t, a, _clip(c.probability / 0.05), s.mission_importance, 0.0, cost, 0.0,
                                      rr, s.health, ben, why))
                 else:

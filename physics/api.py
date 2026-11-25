@@ -7,6 +7,9 @@ Extras beyond PhysicsAPI (optional for P1/P3/P5):
   RealPhysics.space_weather / set_space_weather(w)   0..1, 0.5 nominal (Retirement Lab slider)
   retirement_lab(sat, t)        3-way comparison + do-nothing, frontend-ready rows
   conjunction_reports(sat, t)   Pc, miss distance, consequence, risk per upcoming conjunction
+  assess_conjunction(sat, t)    Collision Avoidance 2.0: miss before/after a dodge, risk tier, feasibility,
+                                projected_outcome (hypothetical) vs execution_outcome (did the burn happen)
+                                (execute_dodge returns the same record plus fuel used)
   tug_rank(requests)            competing tug requests -> chosen + reason
   sat.orbit["last_breath"]      {verdict, reason, rul_min, point_of_no_return_min, urgency, ...}
 """
@@ -133,20 +136,35 @@ class RealPhysics:
         e = next((x for x in self.enc.get(sat.id, []) if x["debris_id"] == debris_id), None)
         if e is None:
             return {"executed": False, "reason": "unknown debris id"}
-        lead = max(0.0, e["tca"] - t)
-        cost = debris.dodge_fuel_cost(lead)
+        a = debris.evaluate(e, sat, t)             # assessed on the satellite's state BEFORE this burn is debited
+        lead, cost = a["lead_min"], a["dodge_fuel_kg"]
         if not sat.orbit.get("prop_ok", True) or sat.fuel_kg < cost:
-            return {"executed": False, "reason": "propulsion failed or insufficient fuel", "fuel_needed_kg": cost}
-        eff = debris.dodge_effectiveness(lead)
+            # refused: no burn, no route change. projected_* in `a` stays a hypothetical projection (see debris.py).
+            why = debris.EXEC_FAILED_PROPULSION if not sat.orbit.get("prop_ok", True) else debris.EXEC_FAILED_FUEL
+            return dict(a, executed=False, execution_outcome=why, reason="propulsion failed or insufficient fuel",
+                        fuel_needed_kg=cost)
+        eff = a["dodge_effectiveness"]
         if debit_fuel:
             sat.fuel_kg -= cost
         # along-track phasing: ~3*dv*t displacement, expressed as a timing shift of the ground track
-        shift_km = debris.DODGE_SHIFT_M / 1000.0 * eff
-        orbits.apply_route_change(sat.orbit, t, dphase_min=shift_km / 456.0, kind="collision_avoidance",
+        orbits.apply_route_change(sat.orbit, t, dphase_min=a["shift_km"] / 456.0, kind="collision_avoidance",
                                   note=f"dodge {debris_id}")
         sat.orbit.setdefault("dodged", []).append(debris_id)
-        return {"executed": True, "debris_id": debris_id, "lead_min": lead, "fuel_kg": cost,
-                "effectiveness": eff, "residual_likelihood": e["p"] * (1.0 - eff)}
+        return dict(a, executed=True, execution_outcome=debris.EXEC_EXECUTED, fuel_kg=cost, effectiveness=eff)
+
+    def assess_conjunction(self, sat: Satellite, t: float, debris_id: str = None,
+                           horizon_min: float = 1e9) -> List[Dict[str, Any]]:
+        """Collision Avoidance 2.0 (read-only): one assessment per upcoming, not-yet-dodged encounter on `sat`,
+        highest risk_score first. Each dict carries the satellite and debris ids, time to TCA (scripted),
+        predicted miss distance before and after a dodge, risk score and tier (LOW/MEDIUM/HIGH), dodge fuel
+        cost, feasibility (propulsion / fuel reserve), a PROJECTED outcome (AVOIDED / REDUCED / INEFFECTIVE; hypothetical
+        when the burn is infeasible) and an execution_outcome (always NOT_EXECUTED here: an assessment burns nothing).
+        Empty list = no conjunction. See debris.evaluate and docs/ASSUMPTIONS.md; heuristic, not operational."""
+        done = sat.orbit.get("dodged", [])
+        out = [debris.evaluate(e, sat, t) for e in self.enc.get(sat.id, [])
+               if t <= e["tca"] < t + horizon_min and e["debris_id"] not in done
+               and (debris_id is None or e["debris_id"] == debris_id)]
+        return sorted(out, key=lambda x: (-x["risk_score"], x["tca_min"], x["debris_id"]))
 
     def plan_route_change(self, sat: Satellite, t_exec: float, dphase_min: float = 0.0, dcross_km: float = 0.0) -> None:
         """Queue a planned route change (applied by step() at t >= t_exec). Propellant is the caller's concern."""
