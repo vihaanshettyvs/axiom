@@ -22,6 +22,28 @@ chosen to be plausible and explainable, and to keep `RealPhysics` behaviourally 
   (0.26 kg at zero lead, ~0.05 kg at 90 min); cost falls and effectiveness rises with lead time.
   An earlier calibration was up to 43% above the mock at long lead and made brain-ON burn extra fuel.
 
+## Collision Avoidance 2.0 (`debris.evaluate`, `RealPhysics.assess_conjunction`)
+Exposes and checks numbers the model already had. Nothing here is a new orbit model.
+- **TCA is scripted** (`config.CONJUNCTIONS`); it is reported as `time_to_tca_min` with `tca_source = "scripted"`, not predicted.
+- **Predicted miss distance** is the one back-solved from the scripted likelihood above, so it restates that likelihood
+  as a distance; it is not an independent measurement. `miss_sigma_ratio` = miss / sigma.
+- **After the burn:** the along-track phasing shift (2.4 km x effectiveness) adds to the cross-track miss in quadrature,
+  `miss_after = sqrt(miss^2 + shift^2)`. `miss_gain_km = miss_after - miss`.
+- **Risk score / tier:** `risk_score = likelihood x consequence` (the existing `risk`). Tier: LOW < 0.005 <= MEDIUM < 0.02 <= HIGH
+  (`RISK_TIER_MEDIUM`, `RISK_TIER_HIGH`). These are fixed, readable thresholds, not calibrated against anything. "NONE" = no conjunction.
+- **Outcome:** AVOIDED if `miss_after >= 3 sigma`; INEFFECTIVE if `miss_gain < 0.25 km`; otherwise REDUCED.
+  `improved = outcome != INEFFECTIVE`. The 3 sigma and 0.25 km values are chosen conventions (`DODGE_SAFE_SIGMA`, `DODGE_MIN_GAIN_KM`).
+- **Feasibility:** infeasible if propulsion has failed or `fuel - cost < FUEL_RESERVE_KG` (`infeasible_reason`).
+- **Brain ON:** keeps its utility rule and additionally skips a burn that is infeasible or INEFFECTIVE, and keeps the
+  propellant needed for a riskier (higher `risk_score`) encounter of the same satellite that is still ahead.
+  Brain OFF (fixed threshold) is unchanged. Mock physics has no `assess_conjunction`; the brain then uses the original rule.
+- **Recording:** each `DODGE` / `DODGE_FAILED` event carries an optional `data` dict (risk tier, miss before/after, fuel used,
+  outcome, improved). The engine runs `execute_dodge` before debiting fuel, and a burn P2 refuses (propulsion failed)
+  spends no propellant and is not counted as a dodge.
+- **Known inconsistency:** collisions in the engine are still resolved with `likelihood x (1 - effectiveness)`. The outcome label
+  uses the miss-distance view. The two are different simplifications and can disagree on how good a late burn is.
+  Neither is a validated collision probability.
+
 ## Degradation (`space/degradation.py`)
 1. Battery - wear `degrade_rate * radiation(w) * dt` lowers both `health` and the separate `orbit["battery"]`
    (structural shocks hit health, not the battery).
