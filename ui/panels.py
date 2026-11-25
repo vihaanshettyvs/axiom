@@ -1,30 +1,50 @@
 import streamlit as st
-import pandas as pd
 
-def render_top_metrics(frame: dict):
-    sats = frame["satellites"]
-    avg_fuel = sum(s["fuel"] for s in sats) / len(sats)
-    active_watch = sum(1 for s in sats if "Watching" in s["status"])
+
+def render_kpi_cards(active_eval: dict, baseline_eval: dict, brain_on: bool):
+    m = active_eval["metrics"]
+    b = baseline_eval["metrics"]
 
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Avg Fleet Fuel", f"{avg_fuel:.1f}%")
-    c2.metric("Downlink Used", f"{frame['bytes_used_mb']} MB")
-    c3.metric("Satellites On-Task", f"{active_watch} / {len(sats)}")
-    c4.metric("Orbital Credits", f"{frame['credits']}")
 
-    st.caption("Data Labels: 🔥 **Wildfire** = Real Data (NASA FIRMS) | 🛰️ **Orbits, Methane Plume, Debris, Failures** = Simulated")
+    cov_delta = round(m["targets_covered_pct"] - b["targets_covered_pct"], 1)
+    lat_delta = round(m["avg_response_min"] - b["avg_response_min"], 1)
+    bat_delta = round(m["fleet_battery_pct"] - b["fleet_battery_pct"], 1)
+    tri_delta = round(m["triage_score"] - b["triage_score"], 1)
 
-def render_decisions_feed(frames_so_far: list):
-    st.subheader("Brain Decisions & Reasons")
-    all_decisions = [d for f in frames_so_far for d in f["decisions"]]
-    if not all_decisions:
-        st.info("No major triage interventions yet at this minute.")
-    else:
-        for d in reversed(all_decisions):
-            st.markdown(f"**t = {d['time']} min | {d['actor']} → `{d['action']}`**: {d['reason']}")
+    with c1:
+        st.metric(
+            label="Targets Covered",
+            value=f"{m['targets_covered_pct']}% ({m['targets_covered_count']}/{m['targets_total']})",
+            delta=f"{cov_delta:+.1f}% vs Brain OFF" if brain_on else "Baseline (Brain OFF)",
+            delta_color="normal" if brain_on else "off",
+        )
 
-def render_satellite_table(frame: dict):
-    st.subheader("Satellite Health & Status")
-    df = pd.DataFrame(frame["satellites"])[["id", "status", "fuel", "health"]]
-    df.columns = ["Satellite", "Status", "Fuel (%)", "Health (%)"]
-    st.dataframe(df, use_container_width=True, hide_index=True)
+    with c2:
+        st.metric(
+            label="Avg Response Time",
+            value=f"{m['avg_response_min']} min",
+            delta=f"{lat_delta:+.1f} min vs Brain OFF" if brain_on else "Baseline (Brain OFF)",
+            delta_color="inverse" if brain_on else "off",
+        )
+
+    with c3:
+        st.metric(
+            label="Fleet Battery",
+            value=f"{m['fleet_battery_pct']}%",
+            delta=f"{bat_delta:+.1f}% vs Brain OFF" if brain_on else "Baseline (Brain OFF)",
+            delta_color="normal" if brain_on else "off",
+        )
+
+    with c4:
+        st.metric(
+            label="Triage Score",
+            value=f"{m['triage_score']} / 100",
+            delta=f"{tri_delta:+.1f} pts vs Brain OFF" if brain_on else "Baseline (Brain OFF)",
+            delta_color="normal" if brain_on else "off",
+        )
+
+
+def render_target_table(active_eval: dict):
+    st.subheader("Ground Target Coverage")
+    st.dataframe(active_eval["target_rows"], hide_index=True, width="stretch")

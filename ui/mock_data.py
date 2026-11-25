@@ -1,54 +1,81 @@
-import numpy as np
+import math
 
-def get_mock_runlog(brain_on: bool = True, num_frames: int = 20):
-    rng = np.random.default_rng(42)
+TARGETS = [
+    {"id": "TGT-01", "name": "Bengaluru Flood Zone", "lat": 12.97, "lon": 77.59, "priority": "CRITICAL"},
+    {"id": "TGT-02", "name": "California Wildfire", "lat": 37.77, "lon": -122.42, "priority": "CRITICAL"},
+    {"id": "TGT-03", "name": "Mediterranean Distress", "lat": 35.90, "lon": 14.51, "priority": "HIGH"},
+    {"id": "TGT-04", "name": "Tokyo Seismic Watch", "lat": 35.68, "lon": 139.69, "priority": "HIGH"},
+    {"id": "TGT-05", "name": "Amazon Deforestation", "lat": -3.12, "lon": -60.02, "priority": "MEDIUM"},
+    {"id": "TGT-06", "name": "Nairobi Drought Grid", "lat": -1.29, "lon": 36.82, "priority": "HIGH"},
+    {"id": "TGT-07", "name": "North Sea Storm", "lat": 56.00, "lon": 3.00, "priority": "MEDIUM"},
+    {"id": "TGT-08", "name": "Sydney Bushfire", "lat": -33.87, "lon": 151.21, "priority": "CRITICAL"},
+]
+
+SAT_SPECS = [
+    {"id": "SAT-01", "name": "Sentinel-Alpha", "lat0": 15.0, "lon0": 60.0, "dlat": 1.2, "dlon": 4.0, "radius_km": 1700},
+    {"id": "SAT-02", "name": "Sentinel-Beta", "lat0": 38.0, "lon0": -135.0, "dlat": -0.8, "dlon": 4.2, "radius_km": 1700},
+    {"id": "SAT-03", "name": "Sentinel-Gamma", "lat0": 40.0, "lon0": -5.0, "dlat": -1.1, "dlon": 3.8, "radius_km": 1650},
+    {"id": "SAT-04", "name": "Sentinel-Delta", "lat0": -10.0, "lon0": -75.0, "dlat": 1.0, "dlon": 4.1, "radius_km": 1750},
+    {"id": "SAT-05", "name": "Sentinel-Epsilon", "lat0": -25.0, "lon0": 120.0, "dlat": -0.6, "dlon": 3.9, "radius_km": 1800},
+    {"id": "SAT-06", "name": "Sentinel-Zeta", "lat0": 5.0, "lon0": 20.0, "dlat": 0.9, "dlon": 3.5, "radius_km": 1600},
+]
+
+
+def _wrap_lon(lon: float) -> float:
+    return ((lon + 180.0) % 360.0) - 180.0
+
+
+def _bounce_lat(lat: float) -> float:
+    if lat > 65.0:
+        return 130.0 - lat
+    if lat < -65.0:
+        return -130.0 - lat
+    return lat
+
+
+def generate_mock_runlog(num_steps: int = 30) -> dict:
     frames = []
-    haps_path = []
+    for t in range(num_steps):
+        sats_off = []
+        sats_on = []
+        for idx, spec in enumerate(SAT_SPECS):
+            base_lat = _bounce_lat(spec["lat0"] + math.sin(t * 0.25 + idx) * 18.0)
+            base_lon = _wrap_lon(spec["lon0"] + t * spec["dlon"])
+            batt_off = max(25.0, round(95.0 - t * 1.4 - idx * 2.0, 1))
+            batt_on = max(35.0, round(95.0 - t * 1.0 - idx * 1.5, 1))
 
-    for t in range(num_frames):
-        # 50x50 methane probability grid (0 to 100 km)
-        x = np.linspace(0, 100, 50)
-        y = np.linspace(0, 100, 50)
-        X, Y = np.meshgrid(x, y)
-        spread = max(4.0, 18.0 - t * 0.7) if brain_on else 16.0
-        grid = np.exp(-((X - 65) ** 2 + (Y - 40) ** 2) / (2 * spread ** 2))
+            sats_off.append({
+                "id": spec["id"],
+                "name": spec["name"],
+                "lat": round(base_lat, 2),
+                "lon": round(base_lon, 2),
+                "radius_km": spec["radius_km"],
+                "status": "ACTIVE",
+                "battery": batt_off,
+            })
 
-        # HAPS path: adaptive toward landfill (65,40) if Brain ON, lawnmower if OFF
-        if brain_on:
-            hx = 20 + (65 - 20) * (t / max(1, num_frames - 1))
-            hy = 20 + (40 - 20) * (t / max(1, num_frames - 1))
-        else:
-            hx = 15 + (t % 5) * 18
-            hy = 15 + (t // 5) * 20
-        haps_path.append((round(hx, 1), round(hy, 1)))
-
-        # 4 sample satellites
-        sats = [
-            {"id": "SAT-1", "x": (10 + t * 4) % 100, "y": 42, "fuel": max(10, 90 - t * (1.2 if brain_on else 2.5)), "health": 98, "status": "Dodging" if (t == 6) else "Watching Leak"},
-            {"id": "SAT-2", "x": (30 + t * 3) % 100, "y": 72, "fuel": max(15, 85 - t * 0.8), "health": 95, "status": "Watching Fire"},
-            {"id": "SAT-3", "x": (70 - t * 2) % 100, "y": 25, "fuel": max(5, 35 - t * 1.5), "health": max(10, 60 - t * 2.5), "status": "Retiring" if (brain_on and t >= 12) else ("Lost" if (not brain_on and t >= 15) else "Degrading")},
-            {"id": "SAT-4", "x": (50 + t * 2) % 100, "y": 55, "fuel": 88 - t * 0.5, "health": 99, "status": "Standby"},
-        ]
-
-        # Decisions with one-line reasons
-        decisions = []
-        if t == 6:
-            decisions.append({"time": t, "actor": "SAT-1", "action": "DODGE", "reason": "Debris risk high; handing landfill watch to HAPS." if brain_on else "Independent dodge (no handoff)."})
-        if t == 12 and brain_on:
-            decisions.append({"time": t, "actor": "SAT-3", "action": "RETIRE", "reason": "Battery below threshold; initiating controlled deorbit before point of no return."})
-        if t == 14 and brain_on:
-            decisions.append({"time": t, "actor": "DRONE-1", "action": "DISPATCH", "reason": "Leak probability > 85% at landfill; dispatching drone to confirm."})
+            sats_on.append({
+                "id": spec["id"],
+                "name": spec["name"],
+                "lat": round(base_lat, 2),
+                "lon": round(base_lon, 2),
+                "radius_km": int(spec["radius_km"] * 1.35),
+                "status": "TASKED" if (t + idx) % 2 == 0 else "ACTIVE",
+                "battery": batt_on,
+            })
 
         frames.append({
-            "time_min": t,
-            "prob_grid": grid.tolist(),
-            "landfill": {"x": 65, "y": 40},
-            "wildfire": {"x": 30, "y": 75, "radius": 4 + t * 0.4},
-            "satellites": sats,
-            "haps_path": list(haps_path),
-            "drone_dispatched": brain_on and t >= 14,
-            "bytes_used_mb": round((t + 1) * (2.4 if brain_on else 18.5), 1),
-            "credits": round((t + 1) * (12.5 if brain_on else 3.0), 1),
-            "decisions": decisions,
+            "t": t,
+            "timestamp": f"T+{t * 5:03d} min",
+            "brain_off": {"satellites": sats_off},
+            "brain_on": {"satellites": sats_on},
         })
-    return frames
+
+    return {
+        "meta": {
+            "scenario": "Mock Orbital Triage (6 Sats, 8 Targets)",
+            "source": "mock",
+        },
+        "targets": TARGETS,
+        "frames": frames,
+    }

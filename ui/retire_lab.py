@@ -1,17 +1,47 @@
 import streamlit as st
-import pandas as pd
 
-def render_retire_lab():
-    st.subheader("Retirement Lab: Space Weather & Deorbit Tradeoffs")
-    st.caption("Simulated drag model — move the Space-Weather Index to see how solar activity changes re-entry time and credits.")
 
-    kp = st.slider("Space-Weather Index (Solar Activity / Drag)", min_value=1, max_value=9, value=4)
-    drag_factor = 1.0 + (kp - 1) * 0.22
+def render_retire_lab(satellites: list[dict], eval_no_retire: dict, eval_with_retire: dict, brain_on: bool):
+    st.subheader("Retirement Lab")
+    st.caption("Simulate satellite failures live without resetting the current timestep.")
 
-    data = [
-        {"Option": "Controlled Burn", "Est. Re-entry (Days)": round(30 / drag_factor, 1), "Fuel Needed (%)": 18, "Orbital Credits": round(80 + kp * 2, 1)},
-        {"Option": "Drag Sail", "Est. Re-entry (Days)": round(180 / drag_factor, 1), "Fuel Needed (%)": 2, "Orbital Credits": round(95 + kp * 3, 1)},
-        {"Option": "Electrodynamic Tether", "Est. Re-entry (Days)": round(90 / drag_factor, 1), "Fuel Needed (%)": 0, "Orbital Credits": round(110 + kp * 4, 1)},
-        {"Option": "Do Nothing (Uncontrolled)", "Est. Re-entry (Days)": round(1800 / drag_factor, 1), "Fuel Needed (%)": 0, "Orbital Credits": -50.0},
-    ]
-    st.dataframe(pd.DataFrame(data), use_container_width=True, hide_index=True)
+    retired_set: set[str] = st.session_state.retired_sats
+
+    if retired_set:
+        before_cov = eval_no_retire["metrics"]["targets_covered_pct"]
+        after_cov = eval_with_retire["metrics"]["targets_covered_pct"]
+        drop = round(after_cov - before_cov, 1)
+
+        if brain_on:
+            st.warning(
+                f"{len(retired_set)} satellite(s) retired. Coverage impact: **{drop:+.1f}%** "
+                f"(Brain ON is re-tasking active satellites to cover gaps)."
+            )
+        else:
+            st.error(
+                f"{len(retired_set)} satellite(s) retired. Coverage impact: **{drop:+.1f}%** "
+                f"(Turn Brain ON to see automatic re-tasking)."
+            )
+
+        if st.button("Restore All Satellites", key="restore_all_btn"):
+            st.session_state.retired_sats = set()
+            st.rerun()
+
+    for sat in satellites:
+        sid = sat["id"]
+        is_retired = sid in retired_set
+        col_info, col_btn = st.columns([3, 1.4])
+
+        with col_info:
+            status_label = "RETIRED" if is_retired else f"{sat.get('status', 'ACTIVE')} | Batt {sat.get('battery', 0)}%"
+            st.markdown(f"**{sid}** — {sat.get('name', '')}  \n`{status_label}`")
+
+        with col_btn:
+            if is_retired:
+                if st.button("Restore", key=f"restore_{sid}"):
+                    st.session_state.retired_sats.discard(sid)
+                    st.rerun()
+            else:
+                if st.button("Retire", key=f"retire_{sid}"):
+                    st.session_state.retired_sats.add(sid)
+                    st.rerun()
