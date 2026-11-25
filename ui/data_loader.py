@@ -181,3 +181,37 @@ def evaluate_frame(frame: dict, targets: list[dict], mode: str, retired_sats: se
     hit_weight = sum(weights.get(t.get("priority", "MEDIUM"), 1) for t in targets if t["id"] in covered_ids)
     triage_score = round(100.0 * hit_weight / max_weight, 1)
     return {"satellites": sats, "covered_ids": covered_ids, "target_rows": target_rows, "sim_metrics": frame.get("sim_metrics") or {}, "metrics": {"targets_covered_pct": coverage_pct, "targets_covered_count": len(covered_ids), "targets_total": len(targets), "avg_response_min": avg_response_min, "fleet_battery_pct": avg_battery, "triage_score": triage_score}}
+
+CURATED_GROUPS = {
+    "1. Primary Demo (Seed 42)": [
+        ("Brain ON - Adaptive Triage Replay", "out/demo/runlog_brain_on.json"),
+        ("Brain OFF - Baseline Lawnmower", "out/demo/runlog_brain_off.json"),
+        ("ON vs OFF Metrics Comparison", "out/demo/comparison.json"),
+        ("P4 Sensing & Hazard Report", "out/demo/p4_report.json"),
+    ],
+    "2. NASA FIRMS (Real Wildfires)": [
+        ("Brain ON - Real FIRMS Replay", "out/firms_demo/runlog_brain_on.json"),
+        ("Brain OFF - Baseline Lawnmower", "out/firms_demo/runlog_brain_off.json"),
+        ("FIRMS ON vs OFF Comparison", "out/firms_demo/comparison.json"),
+        ("FIRMS 6-Seed Validation Table", "out/firms_validation.json"),
+        ("FIRMS P4 Sensing Report", "out/firms_demo/p4_report.json"),
+    ],
+    "3. Backup Demo (Seed 7)": [
+        ("Brain ON - Early Detection Replay", "out/backup/runlog_brain_on.json"),
+        ("Brain OFF - Baseline Lawnmower", "out/backup/runlog_brain_off.json"),
+        ("Backup ON vs OFF Comparison", "out/backup/comparison.json"),
+    ],
+    "4. Multi-Seed Benchmarks": [
+        ("Full Multi-Seed Validation", "out/validation.json"),
+        ("Seed 42 Summary Comparison", "out/comparison.json"),
+        ("P4 Full Telemetry Report", "data/p4_report.json"),
+    ],
+}
+
+def get_grouped_json_files() -> dict[str, list[tuple[str, Path]]]:
+    grouped: dict[str, list[tuple[str, Path]]] = {}
+    for group_name, entries in CURATED_GROUPS.items():
+        valid = [(label, ROOT_DIR / rel) for label, rel in entries if (ROOT_DIR / rel).exists()]
+        if valid:
+            grouped[group_name] = valid
+    return grouped

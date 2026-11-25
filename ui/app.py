@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 import streamlit as st
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from charts import build_mission_timeline
-from data_loader import evaluate_frame, format_json_label, list_json_files, load_firms_validation, load_mock_runlog, load_p4_report, load_runlog_from_bytes, load_runlog_from_path
+from data_loader import evaluate_frame, get_grouped_json_files, load_firms_validation, load_mock_runlog, load_p4_report, load_runlog_from_bytes, load_runlog_from_path
 from map_view import build_map_figure
 from panels import render_events_feed, render_kpi_cards, render_target_table
 from retire_lab import render_retire_lab
@@ -25,10 +25,14 @@ with st.sidebar:
     data_mode = st.radio("Source", ["Real RunLog JSON", "Mock Data"], index=0)
     runlog = None
     if data_mode == "Real RunLog JSON":
-        json_files = list_json_files()
-        if json_files:
-            selected_file = st.selectbox("Select cached JSON", options=json_files, format_func=format_json_label)
+        grouped_files = get_grouped_json_files()
+        if grouped_files:
+            chosen_group = st.selectbox("Scenario Category", options=list(grouped_files.keys()))
+            entries = grouped_files[chosen_group]
+            chosen_idx = st.selectbox("Select Run / Report", options=range(len(entries)), format_func=lambda i: entries[i][0])
+            selected_label, selected_file = entries[chosen_idx]
             runlog = load_runlog_from_path(selected_file)
+            runlog.setdefault("meta", {})["source"] = f"{chosen_group} -> {selected_label}"
         else:
             st.info("No .json files found yet. Upload one below:")
         uploaded = st.file_uploader("Or upload RunLog JSON", type=["json"])
