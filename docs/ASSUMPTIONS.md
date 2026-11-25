@@ -23,12 +23,24 @@ chosen to be plausible and explainable, and to keep `RealPhysics` behaviourally 
   An earlier calibration was up to 43% above the mock at long lead and made brain-ON burn extra fuel.
 
 ## Degradation (`space/degradation.py`)
-1. Fuel - spent by the engine; propulsion-limited below 0.05 kg.
-2. Battery/wear - `health -= degrade_rate * radiation(w) * dt`.
-3. Sensor - optional glitch (`config.SENSOR_GLITCH_PROB`, default 0 = off) and scripted failure.
-4. Structural/propulsion - random shocks (`SHOCK_PROB`) and scripted failure.
+1. Battery - wear `degrade_rate * radiation(w) * dt` lowers both `health` and the separate `orbit["battery"]`
+   (structural shocks hit health, not the battery).
+2. Propulsion - `orbit["prop_ok"] = False` (scripted or `PROP_FAIL_PROB`): no dodges, no burns.
+3. Communication - `orbit["comm_ok"] = False` (scripted or `COMM_FAIL_PROB`): no ground contact, no commands.
+4. Sensor - `orbit["sensor_factor"]` cut (scripted or `SENSOR_GLITCH_PROB`).
+- Also: fuel depletion (engine debits fuel; reserve 0.05 kg) and random structural shocks (`SHOCK_PROB`).
 - Demo failure: `config.KNOWN_FAILURES = {"SAT-05": {"t": 60, "mode": "battery"}}`
-  (modes: battery, sensor, structural, propulsion) or `sat.orbit["known_failure"]`.
+  (modes: battery, sensor, communication, propulsion, structural) or `sat.orbit["known_failure"]`.
+- Telemetry: `sat.orbit["telemetry"]` = fuel, battery, health, sensor performance, comm/propulsion flags,
+  failure severity, active failures, 60-min failure probability.
+
+## Manoeuvres and threats
+- Route change: a timing (phase) shift and/or cross-track shift of the ground track, logged in
+  `orbit["maneuvers"]`; planned ones are queued and applied by `step`. A dodge is a route change of
+  `2.4 km x effectiveness` of along-track shift expressed as timing (~0.005 min), so coverage barely changes.
+- Generated threats (`inject_threat`) have TCA 35-90 min ahead and Pc bands LOW 0.004-0.02, MEDIUM 0.03-0.08,
+  HIGH 0.10-0.30. **All risk values are heuristics, not validated collision probabilities.**
+- Dodge recommendation: dodge if `risk x effectiveness x 400 > fuel_cost x 60` and the burn is affordable.
 
 ## Space weather (`space/__init__.py`)
 - Index `w` in [0,1], 0.5 nominal (all factors 1.0).
@@ -51,6 +63,13 @@ chosen to be plausible and explainable, and to keep `RealPhysics` behaviourally 
 
 ## Tug (`space/tug.py`)
 - One tug, `eta_min` travel, cool-down, one satellite at a time. Operations chosen from need:
-  REFUEL if fuel < 95% capacity, REPAIR if health < 0.97 or a fault is open, else INSPECT.
-  REFUEL+REPAIR = `service_min`; others are 0.4-0.8 of it. REBOOST is modelled in `OP_TIME` only.
+  REFUEL if fuel < 95% capacity, REPAIR if health < 0.97 or a fault is open, REBOOST if the orbit is
+  below 500 km (or `needs_reboost`), else INSPECT. REFUEL+REPAIR = `service_min`; others 0.4-0.8 of it.
+- The tug has its own propellant (1.5 kg): INSPECT 0.05, REFUEL 0.30, REPAIR 0.25, REBOOST 0.20 kg per
+  operation; a request is refused when it is exhausted.
+
+## Comm loss and retirement
+- A satellite without a command link cannot perform a burn: `retirement_options` returns `[]` and the lab marks
+  the burn infeasible. Drag sail and tether are assumed to deploy from a pre-set autonomous timer
+  (success probability x0.6). Its future usefulness is cut to 10% (data cannot reach the ground).
 - `tug_rank` (not part of the engine API) orders competing requests: `0.6 urgency + 0.4 value - 0.002 travel`.

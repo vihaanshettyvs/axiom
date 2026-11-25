@@ -7,8 +7,14 @@ from the sat's needs; REFUEL+REPAIR together equals config.TUG["service_min"].
 import config
 from contracts import Status
 
-# (fraction of service_min, human description)
+# Fraction of config.TUG["service_min"] each operation takes.
 OP_TIME = {"INSPECT": 0.4, "REFUEL": 0.7, "REPAIR": 0.8, "REBOOST": 0.5}
+# Tug's own propellant per operation (kg). The tug has TUG_FUEL_KG in total, so it is a consumable resource.
+OP_FUEL_KG = {"INSPECT": 0.05, "REFUEL": 0.30, "REPAIR": 0.25, "REBOOST": 0.20}
+TUG_FUEL_KG = 1.5
+REBOOST_ALT_GAIN_KM = 50.0
+REBOOST_BELOW_ALT_KM = 500.0     # drag has pulled the orbit this low -> boost it back up
+NOMINAL_ALT_KM = 550.0
 
 
 def plan_ops(s, o: dict) -> list:
@@ -17,11 +23,19 @@ def plan_ops(s, o: dict) -> list:
         ops.append("REFUEL")
     if s.health < 0.97 or o.get("sensor_factor", 1.0) < 1.0 or not o.get("prop_ok", True):
         ops.append("REPAIR")
+    if o.get("needs_reboost") or o.get("alt_km", NOMINAL_ALT_KM) < REBOOST_BELOW_ALT_KM:
+        ops.append("REBOOST")
     return ops or ["INSPECT"]
+
+
+def fuel_cost(ops: list) -> float:
+    return sum(OP_FUEL_KG[x] for x in ops)
 
 
 def service_minutes(ops: list) -> float:
     f = 1.0 if {"REFUEL", "REPAIR"} <= set(ops) else max(OP_TIME[x] for x in ops)
+    if len(ops) > 2:
+        f += 0.3 * (len(ops) - 2)          # extra operations lengthen the visit
     return config.TUG["service_min"] * f
 
 
@@ -45,6 +59,10 @@ def update_servicing(s, o: dict, t: float) -> None:
             o["degrade_rate"] *= 0.5
             o["sensor_factor"] = 1.0
             o["prop_ok"] = True
+            o["battery"] = min(1.0, o.get("battery", s.health) + config.TUG["health_gain"])
+        if "REBOOST" in ops:
+            o["alt_km"] = min(NOMINAL_ALT_KM, o.get("alt_km", NOMINAL_ALT_KM) + REBOOST_ALT_GAIN_KM)
+            o.pop("needs_reboost", None)
         s.status = Status.ACTIVE.value
         o["serviced"] = True
         o["serviced_ops"] = ops
