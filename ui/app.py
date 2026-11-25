@@ -5,12 +5,25 @@ from pathlib import Path
 import plotly.graph_objects as go
 import streamlit as st
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from intro import INTRO_SECONDS, render_intro
 from charts import build_mission_timeline
 from data_loader import evaluate_frame, get_grouped_json_files, load_mock_runlog, load_p4_report, load_runlog_from_bytes, load_runlog_from_path
 from map_view import build_map_figure
 from panels import render_events_feed, render_kpi_cards, render_target_table
 from retire_lab import render_retire_lab
-st.set_page_config(page_title="Orbital Triage Mission Control", layout="wide")
+st.set_page_config(page_title="IRIS Mission Control", layout="wide")
+
+# Play the cinematic intro once per session.
+if "intro_complete" not in st.session_state:
+    st.session_state.intro_complete = False
+
+if not st.session_state.intro_complete:
+    render_intro()
+    time.sleep(INTRO_SECONDS)
+    st.session_state.intro_complete = True
+    st.rerun()
+
 if "t_idx" not in st.session_state:
     st.session_state.t_idx = 0
 if "is_playing" not in st.session_state:
@@ -125,7 +138,7 @@ if num_frames == 0:
     render_firms_and_p4_sections(bool(runlog.get("meta", {}).get("is_firms")))
     st.stop()
 st.session_state.t_idx = min(st.session_state.t_idx, num_frames - 1)
-st.title("Orbital Triage Dashboard")
+st.title("IRIS Mission Control")
 if runlog.get("meta", {}).get("is_firms"):
     st.info("Dataset Mode: **real NASA fire locations, simulated spread** (VIIRS S-NPP 2023-07-12, 59.45N 112.64W)")
 p1, p2, p3, p4 = st.columns([1.2, 1.0, 1.4, 5.4])
