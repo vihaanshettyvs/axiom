@@ -38,3 +38,6 @@ python engine.py --mode both --seed 42 --duration 180      # ON vs OFF + out/*.j
 python engine.py --mode on --duration 60 --mock-all        # every module mocked
 python -m pytest -q                                         # 59 tests
 ```
+
+### v1.1.1 note for P3
+`scenario["retirement_lab"][sat_id]` keys are now five weather levels: `"0.00"`, `"0.25"`, `"0.50"`, `"0.75"`, `"1.00"` (two decimals; earlier logs had `"0.0"`, `"0.5"`, `"1.0"`). Snap the slider to the nearest key.

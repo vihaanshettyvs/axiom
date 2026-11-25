@@ -186,6 +186,9 @@ class Engine:
         self._prev_status = {s.id: s.status for s in self.sats}
         self._last_ests: List[Any] = []
         self._last_handoff_ev: Dict[str, float] = {}
+        self._observer: Dict[str, Tuple[str, float]] = {}      # hazard/estimate id -> (satellite, last minute it was assigned)
+        self._last_dodge: Dict[str, float] = {}
+        self._reassigned: Dict[Tuple[str, str], float] = {}
         self._boot_events, self.events = self.events, []          # load-time events appear in frame 0
         self.log = RunLog(meta=self._meta(), scenario=self._scenario())
         self.log.scenario["retirement_lab"] = self._retirement_lab()
@@ -204,8 +207,10 @@ class Engine:
                                      phase=s.orbit["phase"], importance=s.mission_importance)
                                 for s in self.sats if s.kind == "SAT"],
                     hazard_ids=[h["id"] for h in self.hazard_specs],
-                    hazards=[dict(id=h["id"], kind=h.get("kind", "wildfire"), t_start=h["t_start"]) for h in self.hazard_specs],
-                    hazard_source=self.hazard_source, haps_start=config.HAPS_START,
+                    hazards=[dict(id=h["id"], kind=h.get("kind", "wildfire"), t_start=h["t_start"],
+                                  source=("NASA_FIRMS" if (self.hazard_source.startswith("firms") and h.get("kind", "wildfire") == "wildfire")
+                                          else "SIMULATED")) for h in self.hazard_specs],
+                    hazard_source=self.hazard_source, hazard_source_note=self._source_note(), haps_start=config.HAPS_START,
                     drone_base=config.DRONE_BASE, sensor_specs=config.SENSOR_SPECS,
                     conjunctions=[dict(sat=a, debris=b, tca=c, p=d) for a, b, c, d in config.CONJUNCTIONS])
 
@@ -227,11 +232,18 @@ class Engine:
         for s in self.sats:
             if s.kind == "SAT":
                 out[s.id] = {}
-                for w in (0.0, 0.5, 1.0):
+                for w in (0.0, 0.25, 0.5, 0.75, 1.0):
                     self.physics.set_space_weather(w)
-                    out[s.id][f"{w:.1f}"] = lab(s, 0.0)
+                    out[s.id][f"{w:.2f}"] = lab(s, 0.0)
         self.physics.set_space_weather(keep)
         return out
+
+    def _source_note(self) -> str:
+        if self.hazard_source.startswith("firms"):
+            return (f"Wildfires: {config.FIRMS_CREDIT}; 100x100 km window centred at lat/lon "
+                    f"{scenario_data.FIRMS_REGION_USED}, read with {scenario_data.FIRMS_READER_USED}. "
+                    f"Methane leaks, debris and satellites are SIMULATED.")
+        return "All hazards, debris and satellites are SIMULATED (no real FIRMS data loaded)."
 
     def sat(self, sid: str) -> Satellite:
         return next(s for s in self.sats if s.id == sid)
@@ -347,9 +359,9 @@ class Engine:
                 else:
                     p.vel = (0.0, 0.0)
                 if p.kind == "HAPS":
-                    p.fuel_kg -= config.HAPS_BURN_PER_KM * step
+                    p.fuel_kg = max(0.0, p.fuel_kg - config.HAPS_BURN_PER_KM * step)
                 elif p.status == Status.ACTIVE.value:
-                    p.fuel_kg -= 1.0 if step > 0 else 0.2
+                    p.fuel_kg = max(0.0, p.fuel_kg - (1.0 if step > 0 else 0.2))
                 if p.kind == "DRONE" and d <= speed:
                     p.orbit["hover"] = p.orbit.get("hover", 0) + 1
                     if p.orbit["hover"] > 6:                    # mission complete -> idle in place
@@ -415,6 +427,15 @@ class Engine:
             if a.target is not None:
                 self.aims[s.id] = a.target
             self._burn(s, a.fuel_cost)
+            if a.target_id:
+                prev = self._observer.get(a.target_id)
+                td = self._last_dodge.get(prev[0], -99.0) if prev else -99.0
+                if (prev and prev[0] != s.id and prev[1] - 3.0 <= td <= t and t - td <= 30.0
+                        and t - self._reassigned.get((a.target_id, s.id), -99.0) >= 15.0):
+                    self._reassigned[(a.target_id, s.id)] = t
+                    self._ev("REASSIGN", s.id, f"Observation of {a.target_id} passes from {prev[0]} (busy dodging debris) "
+                                               f"to {s.id}, which takes over the watch. {d.reason}")
+                self._observer[a.target_id] = (s.id, t)
         elif a.type == ActionType.DOWNLINK:
             self._downlink(s, a)
         elif a.type == ActionType.HANDOFF:
@@ -433,6 +454,13 @@ class Engine:
             if s.fuel_kg >= cost:
                 self.dodged[(s.id, a.target_id)] = self.physics.dodge_effectiveness(s, lead)
                 self._burn(s, cost)
+                self._last_dodge[s.id] = t
+                shift = getattr(self.physics, "execute_dodge", None)      # P2: route change; fuel already debited here
+                if shift:
+                    try:
+                        shift(s, t, a.target_id, debit_fuel=False)
+                    except Exception as ex:                              # optional hook, never fatal
+                        self._ev("MODULE_WARNING", "ENGINE", f"execute_dodge unavailable: {ex}")
                 self.m["dodges"] += 1
                 self._ev("DODGE", s.id, d.reason)
             else:
@@ -554,7 +582,8 @@ class Engine:
         for s in self.sats:
             c = copy.copy(s)
             c.orbit = {k: v for k, v in s.orbit.items() if k in ("serviced", "last_breath", "tug_arrival_t", "tug_done_t",
-                                                                  "retire_done_t")}
+                                                                  "retire_done_t", "telemetry", "maneuvers",
+                                                                  "failure_mode", "battery")}
             sats.append(c)
         hz = [copy.copy(h) for h in self.plume.hazards()]
         D = self.lh.grid()
@@ -609,6 +638,13 @@ def compare(seed: Optional[int] = None, duration: Optional[int] = None, out_dir:
         off.save(os.path.join(out_dir, "runlog_brain_off.json"))
         with open(os.path.join(out_dir, "comparison.json"), "w") as fh:
             json.dump(to_jsonable(comp), fh, indent=2)
+        try:                                                  # P4's analysis report (optional: a missing/broken module is only a warning)
+            from sensing.report import generate_p4_report
+            rep = generate_p4_report(to_jsonable(on.to_dict()), to_jsonable(off.to_dict()))
+            with open(os.path.join(out_dir, "p4_report.json"), "w") as fh:
+                json.dump(to_jsonable(rep), fh, indent=2)
+        except Exception as ex:                               # noqa: BLE001
+            print(f"[warning] P4 report skipped: {type(ex).__name__}: {ex}")
     comp["_logs"] = (on, off)
     return comp
 

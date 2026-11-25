@@ -56,7 +56,7 @@ HAZARDS = [
 ]
 # Methane leaks: near-stationary sources whose emission rate (intensity) fluctuates.
 HAZARDS += [
-    dict(id="LEAK-1", kind="methane", pos=(62.0, 82.0), t_start=10.0, radius0=1.5, rmax=6.0, expansion=0.02,
+    dict(id="LEAK-1", kind="methane", pos=(55.0, 42.0), t_start=10.0, radius0=1.5, rmax=6.0, expansion=0.02,
          wind=(0.01, 0.015), wind_turn=0.001, int0=0.5, int_rate=0.003),
     dict(id="LEAK-2", kind="methane", pos=(44.0, 14.0), t_start=35.0, radius0=1.2, rmax=5.0, expansion=0.02,
          wind=(-0.01, 0.01), wind_turn=-0.001, int0=0.4, int_rate=0.004),
@@ -89,7 +89,7 @@ SATELLITES = [
     dict(id="SAT-09", A=(55, -60), B=(66, 160), period=125, phase=5, importance=0.5,
          fuel=1.1, health=0.88, degrade=0.0005),
     dict(id="SAT-10", A=(-60, 88), B=(160, 84), period=110, phase=60, importance=0.6,
-         fuel=1.0, health=0.85, degrade=0.0007),
+         fuel=0.45, health=0.70, degrade=0.0007),      # 2nd tug candidate -> competes with SAT-03
     dict(id="SAT-11", A=(160, -30), B=(-60, 130), period=130, phase=35, importance=0.7,
          fuel=1.6, health=0.96, degrade=0.0004),
     dict(id="SAT-12", A=(-40, 110), B=(140, -40), period=125, phase=90, importance=0.5,
@@ -107,6 +107,7 @@ CONJUNCTIONS = [
     ("SAT-04", "DEB-3341", 120, 0.15),
     ("SAT-06", "DEB-1499", 150, 0.02),
     ("SAT-08", "DEB-5521", 85, 0.05),
+    ("SAT-09", "DEB-7710", 158, 0.12),    # SAT-09 is watching the landfill leak around t~67-71: debris approaches the observer
     ("SAT-11", "DEB-6102", 130, 0.012),
 ]
 CONJ_FORECAST_MIN = 90           # how far ahead the brain sees conjunctions
@@ -142,9 +143,19 @@ DEBRIS_PENALTY = 150.0           # value of avoiding an uncontrolled death
 SERVICE_VALUE = 120.0
 TUG_COST = 25.0
 SLEW_FUEL_PER_KM = 0.0004      # only charged when the tasking changes (tracking a held target is free)
+URGENCY_CONFIRM_W = 0.3          # extra urgency for tracks that are still coin-flips (need a confirming look)
+REPEAT_LOOK_DECAY = 0.35         # value multiplier for each extra satellite already looking at the same hazard
 GAIN_K = 8.0                     # info gain saturation constant
 GAIN_MASS_W = 6.0
 FUEL_RESERVE_KG = 0.05
 RETIRE_RUL_MIN = 30.0
 HAPS_BURN_PER_KM = 0.001
 BASELINE_DODGE_RISK = 0.01       # brain OFF dodges only when instantaneous risk exceeds this
+
+# Retirement option scoring (used by the brain to choose between controlled_deorbit / drag_sail / edt_tether)
+RETIRE_RISK_W = 150.0            # penalty per unit of failure risk of the chosen method (debris left behind)
+RETIRE_TIME_W = 0.2              # penalty per minute the method takes
+DATA_SOURCE_LABEL = {"synthetic": "SIMULATED", "firms": "NASA FIRMS (real detections)", "custom": "CUSTOM"}
+
+FIRMS_REGION = None              # (lat, lon) to force the centre of the simulated 100x100 km window; None = densest cluster
+FIRMS_CREDIT = "NASA FIRMS VIIRS S-NPP historical sample data (sample_viirs_snpp_071223.csv, acquisitions 2023-07-12)"

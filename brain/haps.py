@@ -133,9 +133,10 @@ def should_dispatch_drone(est: Estimate, haps: Satellite, drone: Satellite, now:
     if est.last_obs_t < 0 or now - est.last_obs_t > 40 or haps.status == "DEAD":
         return False, "no recent aerial observation"
     conflicting = est.n_pos <= 2 and est.existence < 0.85
-    if est.intensity_est >= 0.5 or conflicting:
-        why = "high intensity requires ground-level perimeter check" if est.intensity_est >= 0.5 \
-            else "conflicting evidence needs ground truth"
+    if est.intensity_est >= 0.5 or conflicting or est.kind == "methane":
+        why = ("localization threshold reached: a ground gas sensor must confirm the leak source" if est.kind == "methane"
+               else "high intensity requires ground-level perimeter check" if est.intensity_est >= 0.5
+               else "conflicting evidence needs ground truth")
         eta = dist(drone.pos, est.pos) / config.SENSOR_SPECS["DRONE"]["speed"]
         if eta * 1.2 + 8 <= drone.fuel_kg:
             return True, f"{why} (ETA {eta:.0f} min)"

@@ -1,0 +1,316 @@
+{
+  "project": "ORBITA",
+  "module": "P4 - Data and Sensing",
+  "runs": {
+    "brain_on": {
+      "mode": "BRAIN_ON",
+      "seed": 7,
+      "completed": true,
+      "summary": {
+        "mode": "BRAIN_ON",
+        "seed": 7,
+        "mean_loc_error_km": 9.27768,
+        "time_to_detect_min": {
+          "FIRE-E": 49.0,
+          "FIRE-W": 34.0,
+          "LEAK-1": 12.0,
+          "LEAK-2": null
+        },
+        "mean_time_to_detect_min": 51.25,
+        "time_to_localize_min": {
+          "FIRE-E": 49.0,
+          "FIRE-W": 34.0,
+          "LEAK-1": 12.0,
+          "LEAK-2": null
+        },
+        "mean_time_to_localize_min": 51.25,
+        "mean_detection_latency_min": 2.10224,
+        "false_alarm_tracks": 1,
+        "fuel_used_kg": 1.32266,
+        "bandwidth_mb": 366.91,
+        "attention_alerts": 5,
+        "sats_lost": 0,
+        "expected_sat_loss": 0.00418,
+        "uncontrolled_dead": 0,
+        "retired": 1,
+        "serviced": 2,
+        "dodges": 8,
+        "observations": 1527,
+        "final_entropy_bits": 24.616,
+        "completed": true
+      },
+      "hazard_estimates": [
+        {
+          "id": "EST-04",
+          "kind": "wildfire",
+          "score": 70.69,
+          "existence": 1.0,
+          "confidence": 0.7768,
+          "intensity": 0.91,
+          "growth_est": 0.0133,
+          "uncertainty_km": 2.144,
+          "confirmed": false
+        },
+        {
+          "id": "LEAK-02",
+          "kind": "methane",
+          "score": 60.53,
+          "existence": 1.0,
+          "confidence": 0.8622,
+          "intensity": 0.702,
+          "growth_est": 0.0053,
+          "uncertainty_km": 1.599,
+          "confirmed": true
+        },
+        {
+          "id": "EST-03",
+          "kind": "wildfire",
+          "score": 50.03,
+          "existence": 0.8348,
+          "confidence": 0.7178,
+          "intensity": 0.835,
+          "growth_est": 0.0325,
+          "uncertainty_km": 1.615,
+          "confirmed": false
+        }
+      ],
+      "observation_analysis": {
+        "observation_count": 1527,
+        "total_raw_mb": 27210.0,
+        "total_comp_mb": 297.81,
+        "saved_mb": 26912.19,
+        "savings_pct": 98.91,
+        "total_detections": 438,
+        "negative_scans": 1108,
+        "delivered_count": 960,
+        "undelivered_count": 567,
+        "mean_delivery_latency_min": 7.9771,
+        "max_delivery_latency_min": 73.0,
+        "observations_by_source": {
+          "HAPS": 180,
+          "SAT": 1312,
+          "DRONE": 35
+        }
+      }
+    },
+    "brain_off": {
+      "mode": "BRAIN_OFF",
+      "seed": 7,
+      "completed": true,
+      "summary": {
+        "mode": "BRAIN_OFF",
+        "seed": 7,
+        "mean_loc_error_km": 17.67399,
+        "time_to_detect_min": {
+          "FIRE-E": 52.0,
+          "FIRE-W": 144.0,
+          "LEAK-1": 65.0,
+          "LEAK-2": null
+        },
+        "mean_time_to_detect_min": 92.75,
+        "time_to_localize_min": {
+          "FIRE-E": 52.0,
+          "FIRE-W": 145.0,
+          "LEAK-1": 66.0,
+          "LEAK-2": null
+        },
+        "mean_time_to_localize_min": 93.25,
+        "mean_detection_latency_min": 28.98374,
+        "false_alarm_tracks": 1,
+        "fuel_used_kg": 1.26387,
+        "bandwidth_mb": 24840.0,
+        "attention_alerts": 129,
+        "sats_lost": 0,
+        "expected_sat_loss": 0.09563,
+        "uncontrolled_dead": 1,
+        "retired": 0,
+        "serviced": 0,
+        "dodges": 8,
+        "observations": 1823,
+        "final_entropy_bits": 39.788,
+        "completed": true
+      },
+      "hazard_estimates": [
+        {
+          "id": "EST-01",
+          "kind": "wildfire",
+          "score": 57.74,
+          "existence": 1.0,
+          "confidence": 0.6149,
+          "intensity": 0.939,
+          "growth_est": 0.018,
+          "uncertainty_km": 3.165,
+          "confirmed": false
+        },
+        {
+          "id": "LEAK-01",
+          "kind": "methane",
+          "score": 44.32,
+          "existence": 1.0,
+          "confidence": 0.6735,
+          "intensity": 0.658,
+          "growth_est": 0.02,
+          "uncertainty_km": 2.785,
+          "confirmed": false
+        },
+        {
+          "id": "EST-03",
+          "kind": "wildfire",
+          "score": 44.29,
+          "existence": 1.0,
+          "confidence": 0.6067,
+          "intensity": 0.73,
+          "growth_est": -0.0005,
+          "uncertainty_km": 3.22,
+          "confirmed": false
+        },
+        {
+          "id": "EST-04",
+          "kind": "wildfire",
+          "score": 4.07,
+          "existence": 0.2851,
+          "confidence": 0.1677,
+          "intensity": 0.851,
+          "growth_est": 0.0,
+          "uncertainty_km": 3.347,
+          "confirmed": false
+        }
+      ],
+      "observation_analysis": {
+        "observation_count": 1823,
+        "total_raw_mb": 33760.0,
+        "total_comp_mb": 241.5,
+        "saved_mb": 33518.5,
+        "savings_pct": 99.28,
+        "total_detections": 179,
+        "negative_scans": 1651,
+        "delivered_count": 1377,
+        "undelivered_count": 446,
+        "mean_delivery_latency_min": 26.3319,
+        "max_delivery_latency_min": 88.0,
+        "observations_by_source": {
+          "SAT": 1643,
+          "HAPS": 180
+        }
+      }
+    }
+  },
+  "comparison": {
+    "bandwidth": {
+      "brain_on_mb": 366.91,
+      "brain_off_mb": 24840.0,
+      "saved_mb": 24473.09,
+      "savings_pct": 98.52
+    },
+    "metrics": {
+      "mean_loc_error_km": {
+        "brain_on": 9.27768,
+        "brain_off": 17.67399,
+        "difference_on_minus_off": -8.39631
+      },
+      "mean_time_to_detect_min": {
+        "brain_on": 51.25,
+        "brain_off": 92.75,
+        "difference_on_minus_off": -41.5
+      },
+      "mean_time_to_localize_min": {
+        "brain_on": 51.25,
+        "brain_off": 93.25,
+        "difference_on_minus_off": -42.0
+      },
+      "mean_detection_latency_min": {
+        "brain_on": 2.10224,
+        "brain_off": 28.98374,
+        "difference_on_minus_off": -26.8815
+      },
+      "false_alarm_tracks": {
+        "brain_on": 1,
+        "brain_off": 1,
+        "difference_on_minus_off": 0
+      },
+      "fuel_used_kg": {
+        "brain_on": 1.32266,
+        "brain_off": 1.26387,
+        "difference_on_minus_off": 0.05879
+      },
+      "bandwidth_mb": {
+        "brain_on": 366.91,
+        "brain_off": 24840.0,
+        "difference_on_minus_off": -24473.09
+      },
+      "attention_alerts": {
+        "brain_on": 5,
+        "brain_off": 129,
+        "difference_on_minus_off": -124
+      },
+      "sats_lost": {
+        "brain_on": 0,
+        "brain_off": 0,
+        "difference_on_minus_off": 0
+      },
+      "expected_sat_loss": {
+        "brain_on": 0.00418,
+        "brain_off": 0.09563,
+        "difference_on_minus_off": -0.09145
+      },
+      "uncontrolled_dead": {
+        "brain_on": 0,
+        "brain_off": 1,
+        "difference_on_minus_off": -1
+      },
+      "retired": {
+        "brain_on": 1,
+        "brain_off": 0,
+        "difference_on_minus_off": 1
+      },
+      "serviced": {
+        "brain_on": 2,
+        "brain_off": 0,
+        "difference_on_minus_off": 2
+      },
+      "dodges": {
+        "brain_on": 8,
+        "brain_off": 8,
+        "difference_on_minus_off": 0
+      },
+      "observations": {
+        "brain_on": 1527,
+        "brain_off": 1823,
+        "difference_on_minus_off": -296
+      },
+      "final_entropy_bits": {
+        "brain_on": 24.616,
+        "brain_off": 39.788,
+        "difference_on_minus_off": -15.172
+      }
+    },
+    "detection_times_min": {
+      "brain_on": {
+        "FIRE-E": 49.0,
+        "FIRE-W": 34.0,
+        "LEAK-1": 12.0,
+        "LEAK-2": null
+      },
+      "brain_off": {
+        "FIRE-E": 52.0,
+        "FIRE-W": 144.0,
+        "LEAK-1": 65.0,
+        "LEAK-2": null
+      }
+    },
+    "localization_times_min": {
+      "brain_on": {
+        "FIRE-E": 49.0,
+        "FIRE-W": 34.0,
+        "LEAK-1": 12.0,
+        "LEAK-2": null
+      },
+      "brain_off": {
+        "FIRE-E": 52.0,
+        "FIRE-W": 145.0,
+        "LEAK-1": 66.0,
+        "LEAK-2": null
+      }
+    }
+  }
+}

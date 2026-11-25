@@ -46,8 +46,8 @@ def _fuel(dv, ref_dv_fn, ref_kg):
 def engine_options(s, o: dict) -> list:
     """PhysicsAPI.retirement_options: [] if not enough fuel or propulsion is dead."""
     alt = o.get("alt_km", NOMINAL_ALT_KM)
-    if not o.get("prop_ok", True):
-        return []
+    if not o.get("prop_ok", True) or not o.get("comm_ok", True):
+        return []          # burns need working propulsion AND a command link
     opts = [{"name": "controlled_deorbit", "duration_min": BURN_MIN,
              "fuel_kg": _fuel(burn_dv_ms(alt), burn_dv_ms, REF_FUEL_BURN_KG)},
             {"name": "graveyard_orbit", "duration_min": GRAVEYARD_MIN,
@@ -70,20 +70,22 @@ def lab(s, o: dict, weather: float) -> list:
     base_d = decay_lifetime_days(alt, b0, weather, mass_kg=SAT_MASS_KG)
 
     f_burn = _fuel(burn_dv_ms(alt), burn_dv_ms, REF_FUEL_BURN_KG)
-    can_burn = o.get("prop_ok", True) and s.fuel_kg >= f_burn + 0.02
+    comm = o.get("comm_ok", True)
+    can_burn = o.get("prop_ok", True) and comm and s.fuel_kg >= f_burn + 0.02
     period_min = 2 * math.pi * math.sqrt((R_EARTH_KM + alt) ** 3 / MU_KM3_S2) / 60.0
     burn_d = (BURN_MIN + 1.5 * period_min) / 1440.0
     burn = _row("controlled_deorbit", f_burn, f"propellant {f_burn:.2f} kg", BURN_MIN, burn_d, 0.95, 0.05,
-                can_burn, "ok" if can_burn else "insufficient propellant / propulsion failed")
+                can_burn, "ok" if can_burn else "insufficient propellant, propulsion failed or no command link")
 
-    p_sail = 0.97 * (0.5 + 0.5 * s.health)
+    auto = 1.0 if comm else 0.6      # without a command link, passive devices rely on a pre-set autonomous timer
+    p_sail = 0.97 * (0.5 + 0.5 * s.health) * auto
     b_sail = CD * (SAT_AREA_M2 + SAIL_AREA_M2) / (SAT_MASS_KG + SAIL_MASS_KG)
     sail_d = decay_lifetime_days(alt, b_sail, weather, mass_kg=SAT_MASS_KG + SAIL_MASS_KG)
     sail = _row("drag_sail", 0.0, f"sail {SAIL_MASS_KG:.0f} kg, no propellant", SAIL_DEPLOY_MIN, sail_d, p_sail,
                 (1 - p_sail) + min(0.5, sail_d / 365 * 0.004), True,
                 "passive; slower at low drag (quiet space weather)")
 
-    p_edt = 0.85 * (0.5 + 0.5 * s.health)
+    p_edt = 0.85 * (0.5 + 0.5 * s.health) * auto
     can_edt = s.health >= 0.15
     force = TETHER_I0_A * (0.7 + 0.6 * weather) * TETHER_L_M * TETHER_B_T
     edt_d = decay_lifetime_days(alt, b0, weather, tether_force_n=force, mass_kg=SAT_MASS_KG + TETHER_MASS_KG)

@@ -25,7 +25,11 @@ def test_identical_initial_conditions_between_modes():
     on, off = engine.run("on", 42, 30), engine.run("off", 42, 30)
     for fo, ff in zip(on.frames, off.frames):
         assert [h.pos for h in fo.hazards] == [h.pos for h in ff.hazards]          # same world
-        assert [s.pos for s in fo.satellites if s.kind == "SAT"] == [s.pos for s in ff.satellites if s.kind == "SAT"]
+        # same constellation, except where a DODGE has legitimately shifted a route (P2 execute_dodge, logged in orbit["maneuvers"])
+        for a, b in zip(fo.satellites, ff.satellites):
+            if a.kind == "SAT" and not a.orbit.get("maneuvers") and not b.orbit.get("maneuvers"):
+                assert a.pos == b.pos
+    assert [s.pos for s in on.frames[0].satellites] == [s.pos for s in off.frames[0].satellites]
     assert on.scenario == off.scenario
 
 @pytest.mark.parametrize("combo", list(itertools.product([False, True], repeat=4))[::3])

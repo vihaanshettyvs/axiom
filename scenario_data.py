@@ -25,8 +25,60 @@ import config
 from contracts import AREA_KM, dist
 
 
-def load_firms_csv(path: str, max_fires: int = 3, cluster_km: float = 8.0, max_start_min: float = 90.0) -> List[Dict[str, Any]]:
-    """Convert FIRMS detections into wildfire hazard specs in the local 100x100 km frame."""
+def select_dense_region(lats, lons, half_km: float = 50.0):
+    """Pick the centre (lat, lon) of the densest 100x100 km window among the detections.
+
+    FIRMS files can be GLOBAL (one overpass day, tens of thousands of fires); centring on the global median would
+    put the grid in the middle of nowhere. Coarse 1-degree bins find the busiest area, then candidate centres
+    (actual detections in the 3x3 bins around it) are scored by how many detections fall inside +-half_km.
+    Deterministic (ties broken by lowest lat, then lon). config.FIRMS_REGION=(lat, lon) overrides the choice.
+    """
+    forced = getattr(config, "FIRMS_REGION", None)
+    if forced:
+        return float(forced[0]), float(forced[1])
+    from collections import Counter
+    bins = Counter((math.floor(a), math.floor(b)) for a, b in zip(lats, lons))
+    (ba, bb), _ = max(sorted(bins.items()), key=lambda kv: kv[1])
+    cand = [(a, b) for a, b in zip(lats, lons) if abs(math.floor(a) - ba) <= 1 and abs(math.floor(b) - bb) <= 1]
+    if len(cand) > 400:                                              # keep it fast and deterministic
+        step = len(cand) / 400.0
+        cand = [cand[int(i * step)] for i in range(400)]
+    best, bc = None, -1
+    for ca, cb in sorted(cand):
+        kx, ky = 111.32 * math.cos(math.radians(ca)), 110.57
+        n = sum(1 for a, b in zip(lats, lons) if abs(a - ca) * ky <= half_km and abs(b - cb) * kx <= half_km)
+        if n > bc:
+            best, bc = (ca, cb), n
+    return best
+
+
+def _pts_from_p4(path: str):
+    """Preferred reader: P4's sensing.fire.load_fire_detections (strict FIRMS schema, UTC timestamps, km offsets)."""
+    from sensing.fire import load_fire_detections
+    lats, lons = [], []
+    with open(path, newline="", encoding="utf-8-sig") as fh:
+        for r in csv.DictReader(fh):
+            try:
+                lats.append(float(r["latitude"]))
+                lons.append(float(r["longitude"]))
+            except (KeyError, ValueError):
+                continue
+    if not lats:
+        raise ValueError(f"no usable FIRMS rows in {path}")
+    lat0, lon0 = select_dense_region(lats, lons)
+    global FIRMS_REGION_USED
+    FIRMS_REGION_USED = (round(lat0, 4), round(lon0, 4))
+    dets = load_fire_detections(path, lat0, lon0)
+    inside = [d for d in dets if 3.0 <= d.x_km + AREA_KM / 2 <= AREA_KM - 3.0 and 3.0 <= d.y_km + AREA_KM / 2 <= AREA_KM - 3.0]
+    if not inside:
+        return []
+    t0 = min(d.timestamp_utc for d in inside)                        # sim clock starts at the first detection IN the region
+    return [(d.x_km + AREA_KM / 2, d.y_km + AREA_KM / 2, max(d.frp_mw if d.frp_mw is not None else 1.0, 0.1),
+             (d.timestamp_utc - t0).total_seconds() / 60.0) for d in inside]
+
+
+def _pts_legacy(path: str):
+    """Fallback reader (lenient: skips malformed rows, accepts bright_ti4/brightness instead of frp)."""
     rows = []
     with open(path, newline="") as fh:
         for r in csv.DictReader(fh):
@@ -40,17 +92,33 @@ def load_firms_csv(path: str, max_fires: int = 3, cluster_km: float = 8.0, max_s
             rows.append((lat, lon, max(frp, 0.1), t))
     if not rows:
         raise ValueError(f"no usable FIRMS rows in {path}")
-    lat0 = sorted(r[0] for r in rows)[len(rows) // 2]
-    lon0 = sorted(r[1] for r in rows)[len(rows) // 2]               # median -> robust centre
+    lat0, lon0 = select_dense_region([r[0] for r in rows], [r[1] for r in rows])
+    global FIRMS_REGION_USED
+    FIRMS_REGION_USED = (round(lat0, 4), round(lon0, 4))
     kx, ky = 111.32 * math.cos(math.radians(lat0)), 110.57
-    t0 = min(r[3] for r in rows)
-    pts = []
-    for lat, lon, frp, t in rows:
-        x, y = (lon - lon0) * kx + AREA_KM / 2, (lat - lat0) * ky + AREA_KM / 2
-        if 3.0 <= x <= AREA_KM - 3.0 and 3.0 <= y <= AREA_KM - 3.0:
-            pts.append((x, y, frp, (t - t0).total_seconds() / 60.0))
+    cells = [((lon - lon0) * kx + AREA_KM / 2, (lat - lat0) * ky + AREA_KM / 2, frp, t) for lat, lon, frp, t in rows]
+    cells = [c for c in cells if 3.0 <= c[0] <= AREA_KM - 3.0 and 3.0 <= c[1] <= AREA_KM - 3.0]
+    if not cells:
+        return []
+    t0 = min(c[3] for c in cells)
+    return [(x, y, frp, (t - t0).total_seconds() / 60.0) for x, y, frp, t in cells]
+
+
+FIRMS_READER_USED = "none"
+FIRMS_REGION_USED = None          # (lat, lon) centre of the 100x100 km window actually simulated
+
+
+def load_firms_csv(path: str, max_fires: int = 3, cluster_km: float = 8.0, max_start_min: float = 90.0) -> List[Dict[str, Any]]:
+    """Convert FIRMS detections into wildfire hazard specs in the local 100x100 km frame."""
+    global FIRMS_READER_USED
+    try:
+        pts = _pts_from_p4(path)
+        FIRMS_READER_USED = "sensing.fire"
+    except Exception:                                              # noqa: BLE001 - P4 reader missing/strict -> lenient fallback
+        pts = _pts_legacy(path)
+        FIRMS_READER_USED = "scenario_data (fallback)"
     if not pts:
-        raise ValueError("all FIRMS detections fall outside the 100x100 km region")
+        raise ValueError("no FIRMS detections inside the selected 100x100 km region")
     pts.sort(key=lambda p: -p[2])
     clusters: List[List[Tuple[float, float, float, float]]] = []
     for p in pts:
@@ -90,7 +158,7 @@ def build_hazard_specs() -> Tuple[List[Dict[str, Any]], str, List[str]]:
         try:
             fires = load_firms_csv(config.WILDFIRE_DATA_PATH)
             leaks = [h for h in config.HAZARDS if h.get("kind") == "methane"]
-            return fires + leaks, f"firms:{config.WILDFIRE_DATA_PATH}", warns
+            return fires + leaks, f"firms:{config.WILDFIRE_DATA_PATH}", warns   # reader: see FIRMS_READER_USED
         except Exception as e:                                     # noqa: BLE001
             warns.append(f"WILDFIRE_DATA_PATH {config.WILDFIRE_DATA_PATH} failed: {e!r}")
     return list(config.HAZARDS), "synthetic", warns

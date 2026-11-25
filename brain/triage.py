@@ -39,8 +39,9 @@ def _clip(v: float, lo: float = 0.0, hi: float = 1.0) -> float:
 
 def urgency_of(e: Estimate, now: float) -> float:
     stale = 60.0 if e.last_obs_t < 0 else now - e.last_obs_t
+    unsettled = 1.0 - abs(2.0 * e.existence - 1.0)            # 1 when the track is a coin-flip, 0 when settled either way
     return _clip(0.30 * e.intensity_est + 0.25 * _clip(e.growth_est * 5.0) + 0.25 * min(1.0, stale / 30.0)
-                 + 0.20 * e.existence)
+                 + 0.20 * e.existence + config.URGENCY_CONFIRM_W * unsettled)
 
 
 def importance_of(e: Estimate, assets) -> float:
@@ -76,6 +77,12 @@ class TriageBrain:
         decisions += bus
         decisions += self._haps(view, ests, UI)
         decisions += self._drone(view, ests, UI)
+        # a satellite that is burning (DODGE / RETIRE) this minute does not also re-point its sensor
+        burning = {d.action.actor_id for d in bus
+                   if d.action.type in (ActionType.DODGE, ActionType.RETIRE)}
+        if burning:
+            decisions = [d for d in decisions
+                         if not (d.action.type == ActionType.OBSERVE and d.action.actor_id in burning)]
         decisions.sort(key=lambda d: -d.expected_benefit)
         return decisions
 
@@ -106,10 +113,12 @@ class TriageBrain:
 
     # -- OBSERVE ------------------------------------------------------- #
     def _observe(self, view: WorldView, ests, UI) -> List[Decision]:
-        sats = [s for s in view.satellites if s.kind == "SAT" and s.operational and s.in_view]
+        sats = [s for s in view.satellites if s.kind == "SAT" and s.operational and s.in_view
+                and (s.orbit.get("telemetry") or {}).get("comm_ok", True)]      # no command link -> cannot be re-tasked
         Dw = view.belief.copy()
         out: List[Decision] = []
         remaining = list(sats)
+        looks: Dict[str, int] = {}                      # looks already assigned to each estimate this minute
         while remaining:
             HbD = binary_entropy(Dw)
             best = None
@@ -123,6 +132,8 @@ class TriageBrain:
                         continue
                     g, _, _ = expected_gain(Dw, aim, s.sensor_radius_km, s.sensor_confidence, HbD)
                     u, imp, e = self._ui_at(aim, s.sensor_radius_km, ests, UI)
+                    if e is not None:                   # diminishing returns: a 2nd/3rd satellite on the same hazard adds little
+                        u *= config.REPEAT_LOOK_DECAY ** looks.get(e.id, 0)
                     fpen = config.FUEL_VALUE * fuel * (1.0 + 2.0 * max(0.0, 1.0 - s.fuel_kg / 0.5))
                     ben = config.INFO_VALUE * u * imp * g * hf - fpen
                     cand = (ben, s, aim, g, u, imp, e, fuel, hf)
@@ -148,6 +159,8 @@ class TriageBrain:
                        f"because it is the best use of its pass: sensor confidence {s.sensor_confidence:.2f}, "
                        f"fuel {s.fuel_kg:.2f} kg, re-pointing {slew:.1f} km, expected information gain {g:.2f}.")
             self._last_aim[s.id] = aim
+            if e is not None:
+                looks[e.id] = looks.get(e.id, 0) + 1
             a = Action(ActionType.OBSERVE, s.id, target=aim, target_id=e.id if e else None)
             out.append(_mk(view.t, a, u, imp, g, fuel, 0.0, 0.0, hf, ben, why, alts))
             w = footprint_weights(aim, s.sensor_radius_km)
@@ -236,6 +249,19 @@ class TriageBrain:
     def _bus_actions(self, view: WorldView) -> List[Decision]:
         out: List[Decision] = []
         tug = view.tug
+        tug_bids: Dict[str, float] = {}
+        if tug.get("available"):
+            span = tug["eta_min"] + tug["service_min"]
+            for q in view.satellites:
+                if q.kind != "SAT" or not q.operational or q.orbit.get("serviced") or q.id in self._tug_requested:
+                    continue
+                nd = 0.5 * (1.0 - q.fuel_kg / q.fuel_capacity_kg) + 0.5 * (1.0 - q.health)
+                if q.rul_min > span + 10 and q.mission_importance >= 0.6 and nd >= 0.40:
+                    b = config.SERVICE_VALUE * q.mission_importance * nd - config.TUG_COST \
+                        - 0.5 * tug["service_min"] * q.mission_importance
+                    if b > 0:
+                        tug_bids[q.id] = b
+        tug_winner = max(tug_bids, key=tug_bids.get) if tug_bids else None
         for s in view.satellites:
             if s.kind != "SAT" or not s.operational:
                 continue
@@ -262,31 +288,47 @@ class TriageBrain:
                                      rr, s.health, ben, why))
                 else:
                     pass  # not worth it -> deliberately accepted (see ASSUMPTIONS.md)
-            # RETIRE
-            opts = self.physics.retirement_options(s, view.t)
-            if opts and (s.rul_min < config.RETIRE_RUL_MIN or s.health < 0.12):
-                o = min(opts, key=lambda x: x["fuel_kg"])
+            # RETIRE  (Last Breath verdict RETIRE or the brain's own RUL rule; method chosen by cost/risk/time score)
+            lab = getattr(self.physics, "retirement_lab", None)      # P2: controlled_deorbit / drag_sail / edt_tether rows
+            raw = (lab(s, view.t) if callable(lab) else None) or (self.physics.retirement_options(s, view.t) or [])
+            opts = [dict(o, name=o.get("name", o.get("option"))) for o in raw
+                    if o.get("feasible", True) and o.get("name", o.get("option")) not in (None, "do_nothing")
+                    and o["fuel_kg"] <= s.fuel_kg - config.FUEL_RESERVE_KG]
+            verdict = (s.orbit.get("last_breath") or {}).get("verdict")
+            if opts and (verdict == "RETIRE" or s.rul_min < config.RETIRE_RUL_MIN or s.health < 0.12):
+                def _score(x):
+                    return config.FUEL_VALUE * x["fuel_kg"] + config.RETIRE_RISK_W * x.get("risk", 0.0) \
+                        + config.RETIRE_TIME_W * x.get("duration_min", 0.0)
+                ranked = sorted(opts, key=_score)
+                o = ranked[0]
+                nm = lambda x: x.get("name", x.get("option"))
                 death = _clip(1.0 - s.rul_min / 60.0)
-                ben = config.DEBRIS_PENALTY * death - config.FUEL_VALUE * o["fuel_kg"] \
-                    - 20.0 * s.mission_importance * s.health
+                ben = config.DEBRIS_PENALTY * death - _score(o) - 20.0 * s.mission_importance * s.health
                 if ben > 0:
-                    why = (f"{s.id} is retired via {o['name']} because its remaining useful life is only "
-                           f"{s.rul_min:.0f} min (health {s.health:.2f}); a graceful de-orbit costs "
-                           f"{o['fuel_kg']:.2f} kg but avoids leaving uncontrolled debris.")
+                    cmp = "; ".join(f"{nm(x)}: {x['fuel_kg']:.2f} kg, risk {x.get('risk', 0):.2f}, "
+                                    f"{x.get('duration_min', 0):.0f} min" for x in ranked)
+                    why = (f"{s.id} is retired via {nm(o)} (Last Breath verdict {verdict or 'n/a'}; remaining life "
+                           f"{s.rul_min:.0f} min, health {s.health:.2f}). Options compared -> {cmp}. {nm(o)} has the "
+                           f"lowest combined fuel/risk/time cost, so it avoids leaving uncontrolled debris at the best price.")
+                    o = dict(o); o["name"] = nm(o)
                     a = Action(ActionType.RETIRE, s.id, params=o)
                     cands.append(_mk(view.t, a, death, s.mission_importance, 0.0, o["fuel_kg"], 0.0, death,
                                      s.health, ben, why))
-            # TUG
+            # TUG (only the best-ranked requester this minute; the others are queued behind it)
             if tug.get("available") and not s.orbit.get("serviced") and s.id not in self._tug_requested:
                 span = tug["eta_min"] + tug["service_min"]
                 need = 0.5 * (1.0 - s.fuel_kg / s.fuel_capacity_kg) + 0.5 * (1.0 - s.health)
                 if s.rul_min > span + 10 and s.mission_importance >= 0.6 and need >= 0.40:
                     ben = config.SERVICE_VALUE * s.mission_importance * need - config.TUG_COST \
                         - 0.5 * tug["service_min"] * s.mission_importance
-                    if ben > 0:
+                    if ben > 0 and s.id == tug_winner:
+                        rivals = ", ".join(f"{k} ({v:.1f})" for k, v in sorted(tug_bids.items(), key=lambda kv: -kv[1])
+                                           if k != s.id)
+                        queue = (f" It outranks {rivals} (benefit {ben:.1f}); they queue behind it." if rivals else "")
                         why = (f"{s.id} requests the servicing tug because its fuel is {s.fuel_kg:.2f}/"
                                f"{s.fuel_capacity_kg:.1f} kg and health {s.health:.2f} while its mission importance is "
-                               f"{s.mission_importance:.1f}; it will survive the {span:.0f} min rendezvous and regain capability.")
+                               f"{s.mission_importance:.1f}; it will survive the {span:.0f} min rendezvous and regain capability."
+                               + queue)
                         a = Action(ActionType.REQUEST_TUG, s.id)
                         cands.append(_mk(view.t, a, need, s.mission_importance, 0.0, 0.0, 0.0, need, s.health,
                                          ben, why))

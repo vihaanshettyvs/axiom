@@ -28,7 +28,7 @@ def test_world_has_12_satellites_haps_drone_tug_and_both_hazard_kinds():
 
 
 def test_methane_is_detected_and_tracked_as_its_own_kind():
-    lg = engine.Engine("on", 42, 120).run()
+    lg = engine.Engine("on", 42, 180).run()          # methane is the slow, weak signal: needs the full scenario
     ests = [e for f in lg.frames for e in f.estimates if e.kind == "methane" and e.existence > 0.8]
     assert ests and all(e.id.startswith("LEAK") for e in ests)
 
