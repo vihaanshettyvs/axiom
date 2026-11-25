@@ -1,0 +1,566 @@
+[
+ {
+  "mode": "on",
+  "seed": 1,
+  "hazards": {
+   "FIRE-1": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 0.0,
+    "localized_after_start_min": 18.0
+   },
+   "FIRE-2": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 90.0,
+    "localized_after_start_min": 42.0
+   },
+   "FIRE-3": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 90.0,
+    "localized_after_start_min": 2.0
+   },
+   "LEAK-1": {
+    "kind": "methane",
+    "source": "SIMULATED",
+    "t_start": 10.0,
+    "localized_after_start_min": 73.0
+   },
+   "LEAK-2": {
+    "kind": "methane",
+    "source": "SIMULATED",
+    "t_start": 35.0,
+    "localized_after_start_min": null
+   }
+  },
+  "fuel_kg": 1.366607770411783,
+  "data_mb": 315.31000000000114,
+  "sats_lost": 0,
+  "uncontrolled_dead": 0,
+  "completed": true,
+  "invalid": 0,
+  "note": "Wildfires: NASA FIRMS VIIRS S-NPP historical sample data (sample_viirs_snpp_071223.csv, acquisitions 2023-07-12); 100x100 km window centred at lat/lon (59.4488, -112.6419), read with sensing.fire. Methane leaks, debris and satellites are SIMULATED.",
+  "region": [
+   59.4488,
+   -112.6419
+  ]
+ },
+ {
+  "mode": "off",
+  "seed": 1,
+  "hazards": {
+   "FIRE-1": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 0.0,
+    "localized_after_start_min": 115.0
+   },
+   "FIRE-2": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 90.0,
+    "localized_after_start_min": null
+   },
+   "FIRE-3": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 90.0,
+    "localized_after_start_min": 80.0
+   },
+   "LEAK-1": {
+    "kind": "methane",
+    "source": "SIMULATED",
+    "t_start": 10.0,
+    "localized_after_start_min": null
+   },
+   "LEAK-2": {
+    "kind": "methane",
+    "source": "SIMULATED",
+    "t_start": 35.0,
+    "localized_after_start_min": null
+   }
+  },
+  "fuel_kg": 1.2638723513770456,
+  "data_mb": 24840.0,
+  "sats_lost": 0,
+  "uncontrolled_dead": 1,
+  "completed": true,
+  "invalid": 0,
+  "note": "Wildfires: NASA FIRMS VIIRS S-NPP historical sample data (sample_viirs_snpp_071223.csv, acquisitions 2023-07-12); 100x100 km window centred at lat/lon (59.4488, -112.6419), read with sensing.fire. Methane leaks, debris and satellites are SIMULATED.",
+  "region": [
+   59.4488,
+   -112.6419
+  ]
+ },
+ {
+  "mode": "on",
+  "seed": 2,
+  "hazards": {
+   "FIRE-1": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 0.0,
+    "localized_after_start_min": 19.0
+   },
+   "FIRE-2": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 90.0,
+    "localized_after_start_min": 42.0
+   },
+   "FIRE-3": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 90.0,
+    "localized_after_start_min": 21.0
+   },
+   "LEAK-1": {
+    "kind": "methane",
+    "source": "SIMULATED",
+    "t_start": 10.0,
+    "localized_after_start_min": 56.0
+   },
+   "LEAK-2": {
+    "kind": "methane",
+    "source": "SIMULATED",
+    "t_start": 35.0,
+    "localized_after_start_min": 2.0
+   }
+  },
+  "fuel_kg": 1.2948066631036232,
+  "data_mb": 339.76000000000045,
+  "sats_lost": 0,
+  "uncontrolled_dead": 0,
+  "completed": true,
+  "invalid": 0,
+  "note": "Wildfires: NASA FIRMS VIIRS S-NPP historical sample data (sample_viirs_snpp_071223.csv, acquisitions 2023-07-12); 100x100 km window centred at lat/lon (59.4488, -112.6419), read with sensing.fire. Methane leaks, debris and satellites are SIMULATED.",
+  "region": [
+   59.4488,
+   -112.6419
+  ]
+ },
+ {
+  "mode": "off",
+  "seed": 2,
+  "hazards": {
+   "FIRE-1": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 0.0,
+    "localized_after_start_min": 52.0
+   },
+   "FIRE-2": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 90.0,
+    "localized_after_start_min": 86.0
+   },
+   "FIRE-3": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 90.0,
+    "localized_after_start_min": null
+   },
+   "LEAK-1": {
+    "kind": "methane",
+    "source": "SIMULATED",
+    "t_start": 10.0,
+    "localized_after_start_min": 64.0
+   },
+   "LEAK-2": {
+    "kind": "methane",
+    "source": "SIMULATED",
+    "t_start": 35.0,
+    "localized_after_start_min": 93.0
+   }
+  },
+  "fuel_kg": 1.2638723513770456,
+  "data_mb": 24840.0,
+  "sats_lost": 0,
+  "uncontrolled_dead": 1,
+  "completed": true,
+  "invalid": 0,
+  "note": "Wildfires: NASA FIRMS VIIRS S-NPP historical sample data (sample_viirs_snpp_071223.csv, acquisitions 2023-07-12); 100x100 km window centred at lat/lon (59.4488, -112.6419), read with sensing.fire. Methane leaks, debris and satellites are SIMULATED.",
+  "region": [
+   59.4488,
+   -112.6419
+  ]
+ },
+ {
+  "mode": "on",
+  "seed": 3,
+  "hazards": {
+   "FIRE-1": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 0.0,
+    "localized_after_start_min": 46.0
+   },
+   "FIRE-2": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 90.0,
+    "localized_after_start_min": 42.0
+   },
+   "FIRE-3": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 90.0,
+    "localized_after_start_min": 2.0
+   },
+   "LEAK-1": {
+    "kind": "methane",
+    "source": "SIMULATED",
+    "t_start": 10.0,
+    "localized_after_start_min": 16.0
+   },
+   "LEAK-2": {
+    "kind": "methane",
+    "source": "SIMULATED",
+    "t_start": 35.0,
+    "localized_after_start_min": null
+   }
+  },
+  "fuel_kg": 1.2458444380331837,
+  "data_mb": 329.53000000000077,
+  "sats_lost": 0,
+  "uncontrolled_dead": 0,
+  "completed": true,
+  "invalid": 0,
+  "note": "Wildfires: NASA FIRMS VIIRS S-NPP historical sample data (sample_viirs_snpp_071223.csv, acquisitions 2023-07-12); 100x100 km window centred at lat/lon (59.4488, -112.6419), read with sensing.fire. Methane leaks, debris and satellites are SIMULATED.",
+  "region": [
+   59.4488,
+   -112.6419
+  ]
+ },
+ {
+  "mode": "off",
+  "seed": 3,
+  "hazards": {
+   "FIRE-1": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 0.0,
+    "localized_after_start_min": 114.0
+   },
+   "FIRE-2": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 90.0,
+    "localized_after_start_min": null
+   },
+   "FIRE-3": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 90.0,
+    "localized_after_start_min": 56.0
+   },
+   "LEAK-1": {
+    "kind": "methane",
+    "source": "SIMULATED",
+    "t_start": 10.0,
+    "localized_after_start_min": 55.0
+   },
+   "LEAK-2": {
+    "kind": "methane",
+    "source": "SIMULATED",
+    "t_start": 35.0,
+    "localized_after_start_min": 97.0
+   }
+  },
+  "fuel_kg": 1.2638723513770456,
+  "data_mb": 24840.0,
+  "sats_lost": 0,
+  "uncontrolled_dead": 1,
+  "completed": true,
+  "invalid": 0,
+  "note": "Wildfires: NASA FIRMS VIIRS S-NPP historical sample data (sample_viirs_snpp_071223.csv, acquisitions 2023-07-12); 100x100 km window centred at lat/lon (59.4488, -112.6419), read with sensing.fire. Methane leaks, debris and satellites are SIMULATED.",
+  "region": [
+   59.4488,
+   -112.6419
+  ]
+ },
+ {
+  "mode": "on",
+  "seed": 4,
+  "hazards": {
+   "FIRE-1": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 0.0,
+    "localized_after_start_min": 19.0
+   },
+   "FIRE-2": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 90.0,
+    "localized_after_start_min": 77.0
+   },
+   "FIRE-3": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 90.0,
+    "localized_after_start_min": 26.0
+   },
+   "LEAK-1": {
+    "kind": "methane",
+    "source": "SIMULATED",
+    "t_start": 10.0,
+    "localized_after_start_min": 95.0
+   },
+   "LEAK-2": {
+    "kind": "methane",
+    "source": "SIMULATED",
+    "t_start": 35.0,
+    "localized_after_start_min": null
+   }
+  },
+  "fuel_kg": 1.132861316642265,
+  "data_mb": 287.0100000000006,
+  "sats_lost": 0,
+  "uncontrolled_dead": 0,
+  "completed": true,
+  "invalid": 0,
+  "note": "Wildfires: NASA FIRMS VIIRS S-NPP historical sample data (sample_viirs_snpp_071223.csv, acquisitions 2023-07-12); 100x100 km window centred at lat/lon (59.4488, -112.6419), read with sensing.fire. Methane leaks, debris and satellites are SIMULATED.",
+  "region": [
+   59.4488,
+   -112.6419
+  ]
+ },
+ {
+  "mode": "off",
+  "seed": 4,
+  "hazards": {
+   "FIRE-1": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 0.0,
+    "localized_after_start_min": 52.0
+   },
+   "FIRE-2": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 90.0,
+    "localized_after_start_min": 87.0
+   },
+   "FIRE-3": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 90.0,
+    "localized_after_start_min": 59.0
+   },
+   "LEAK-1": {
+    "kind": "methane",
+    "source": "SIMULATED",
+    "t_start": 10.0,
+    "localized_after_start_min": 84.0
+   },
+   "LEAK-2": {
+    "kind": "methane",
+    "source": "SIMULATED",
+    "t_start": 35.0,
+    "localized_after_start_min": 92.0
+   }
+  },
+  "fuel_kg": 1.2638723513770456,
+  "data_mb": 23180.0,
+  "sats_lost": 2,
+  "uncontrolled_dead": 1,
+  "completed": true,
+  "invalid": 0,
+  "note": "Wildfires: NASA FIRMS VIIRS S-NPP historical sample data (sample_viirs_snpp_071223.csv, acquisitions 2023-07-12); 100x100 km window centred at lat/lon (59.4488, -112.6419), read with sensing.fire. Methane leaks, debris and satellites are SIMULATED.",
+  "region": [
+   59.4488,
+   -112.6419
+  ]
+ },
+ {
+  "mode": "on",
+  "seed": 5,
+  "hazards": {
+   "FIRE-1": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 0.0,
+    "localized_after_start_min": 31.0
+   },
+   "FIRE-2": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 90.0,
+    "localized_after_start_min": 77.0
+   },
+   "FIRE-3": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 90.0,
+    "localized_after_start_min": 8.0
+   },
+   "LEAK-1": {
+    "kind": "methane",
+    "source": "SIMULATED",
+    "t_start": 10.0,
+    "localized_after_start_min": 23.0
+   },
+   "LEAK-2": {
+    "kind": "methane",
+    "source": "SIMULATED",
+    "t_start": 35.0,
+    "localized_after_start_min": null
+   }
+  },
+  "fuel_kg": 1.235494741789549,
+  "data_mb": 319.43000000000046,
+  "sats_lost": 0,
+  "uncontrolled_dead": 0,
+  "completed": true,
+  "invalid": 0,
+  "note": "Wildfires: NASA FIRMS VIIRS S-NPP historical sample data (sample_viirs_snpp_071223.csv, acquisitions 2023-07-12); 100x100 km window centred at lat/lon (59.4488, -112.6419), read with sensing.fire. Methane leaks, debris and satellites are SIMULATED.",
+  "region": [
+   59.4488,
+   -112.6419
+  ]
+ },
+ {
+  "mode": "off",
+  "seed": 5,
+  "hazards": {
+   "FIRE-1": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 0.0,
+    "localized_after_start_min": 115.0
+   },
+   "FIRE-2": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 90.0,
+    "localized_after_start_min": null
+   },
+   "FIRE-3": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 90.0,
+    "localized_after_start_min": 58.0
+   },
+   "LEAK-1": {
+    "kind": "methane",
+    "source": "SIMULATED",
+    "t_start": 10.0,
+    "localized_after_start_min": 84.0
+   },
+   "LEAK-2": {
+    "kind": "methane",
+    "source": "SIMULATED",
+    "t_start": 35.0,
+    "localized_after_start_min": 92.0
+   }
+  },
+  "fuel_kg": 1.2638723513770456,
+  "data_mb": 24840.0,
+  "sats_lost": 0,
+  "uncontrolled_dead": 1,
+  "completed": true,
+  "invalid": 0,
+  "note": "Wildfires: NASA FIRMS VIIRS S-NPP historical sample data (sample_viirs_snpp_071223.csv, acquisitions 2023-07-12); 100x100 km window centred at lat/lon (59.4488, -112.6419), read with sensing.fire. Methane leaks, debris and satellites are SIMULATED.",
+  "region": [
+   59.4488,
+   -112.6419
+  ]
+ },
+ {
+  "mode": "on",
+  "seed": 42,
+  "hazards": {
+   "FIRE-1": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 0.0,
+    "localized_after_start_min": 32.0
+   },
+   "FIRE-2": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 90.0,
+    "localized_after_start_min": 54.0
+   },
+   "FIRE-3": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 90.0,
+    "localized_after_start_min": 2.0
+   },
+   "LEAK-1": {
+    "kind": "methane",
+    "source": "SIMULATED",
+    "t_start": 10.0,
+    "localized_after_start_min": 11.0
+   },
+   "LEAK-2": {
+    "kind": "methane",
+    "source": "SIMULATED",
+    "t_start": 35.0,
+    "localized_after_start_min": null
+   }
+  },
+  "fuel_kg": 1.3447810973758876,
+  "data_mb": 314.1900000000007,
+  "sats_lost": 0,
+  "uncontrolled_dead": 0,
+  "completed": true,
+  "invalid": 0,
+  "note": "Wildfires: NASA FIRMS VIIRS S-NPP historical sample data (sample_viirs_snpp_071223.csv, acquisitions 2023-07-12); 100x100 km window centred at lat/lon (59.4488, -112.6419), read with sensing.fire. Methane leaks, debris and satellites are SIMULATED.",
+  "region": [
+   59.4488,
+   -112.6419
+  ]
+ },
+ {
+  "mode": "off",
+  "seed": 42,
+  "hazards": {
+   "FIRE-1": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 0.0,
+    "localized_after_start_min": null
+   },
+   "FIRE-2": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 90.0,
+    "localized_after_start_min": null
+   },
+   "FIRE-3": {
+    "kind": "wildfire",
+    "source": "NASA_FIRMS",
+    "t_start": 90.0,
+    "localized_after_start_min": 59.0
+   },
+   "LEAK-1": {
+    "kind": "methane",
+    "source": "SIMULATED",
+    "t_start": 10.0,
+    "localized_after_start_min": 126.0
+   },
+   "LEAK-2": {
+    "kind": "methane",
+    "source": "SIMULATED",
+    "t_start": 35.0,
+    "localized_after_start_min": 93.0
+   }
+  },
+  "fuel_kg": 1.2638723513770456,
+  "data_mb": 24840.0,
+  "sats_lost": 0,
+  "uncontrolled_dead": 1,
+  "completed": true,
+  "invalid": 0,
+  "note": "Wildfires: NASA FIRMS VIIRS S-NPP historical sample data (sample_viirs_snpp_071223.csv, acquisitions 2023-07-12); 100x100 km window centred at lat/lon (59.4488, -112.6419), read with sensing.fire. Methane leaks, debris and satellites are SIMULATED.",
+  "region": [
+   59.4488,
+   -112.6419
+  ]
+ }
+]
