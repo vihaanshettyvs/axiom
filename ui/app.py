@@ -61,7 +61,40 @@ targets = runlog.get("targets", [])
 num_frames = len(frames)
 
 if num_frames == 0:
-    st.error("Loaded RunLog has 0 frames. Check your JSON structure.")
+    st.title("Orbital Triage — Summary / Comparison View")
+    raw_data = runlog.get("raw")
+    if isinstance(raw_data, dict) and raw_data:
+        st.info(
+            f"`{runlog['meta'].get('source', 'JSON')}` is a summary file (no timestep frames). "
+            "Displaying comparison metrics below:"
+        )
+        flat_items = {k: v for k, v in raw_data.items() if not isinstance(v, (dict, list))}
+        nested_dicts = {k: v for k, v in raw_data.items() if isinstance(v, dict)}
+
+        if flat_items:
+            st.subheader("Overview")
+            st.dataframe(
+                [{"Metric": k, "Value": str(v)} for k, v in flat_items.items()],
+                hide_index=True,
+                width="stretch",
+            )
+
+        if nested_dicts:
+            st.subheader("Policy / Run Comparison")
+            all_keys = list(dict.fromkeys(k for d in nested_dicts.values() for k in d.keys()))
+            rows = []
+            for key in all_keys:
+                row = {"Metric": key}
+                for group_name, group_dict in nested_dicts.items():
+                    val = group_dict.get(key, "—")
+                    row[group_name] = str(val) if isinstance(val, (dict, list)) else val
+                rows.append(row)
+            st.dataframe(rows, hide_index=True, width="stretch")
+
+        with st.expander("View Raw JSON"):
+            st.json(raw_data)
+    else:
+        st.warning("Loaded JSON has 0 frames and no summary metrics to display.")
     st.stop()
 
 st.session_state.t_idx = min(st.session_state.t_idx, num_frames - 1)

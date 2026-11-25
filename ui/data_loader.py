@@ -12,7 +12,15 @@ def list_json_files() -> list[Path]:
     return sorted(DATA_DIR.glob("*.json"))
 
 
-def normalize_runlog(raw: dict, source_name: str = "json") -> dict:
+def normalize_runlog(raw, source_name: str = "json") -> dict:
+    if not isinstance(raw, dict):
+        return {
+            "meta": {"scenario": source_name, "source": source_name},
+            "targets": [],
+            "frames": [],
+            "raw": raw,
+        }
+
     if "frames" in raw and "targets" in raw:
         raw.setdefault("meta", {})
         raw["meta"]["source"] = source_name
@@ -24,6 +32,7 @@ def normalize_runlog(raw: dict, source_name: str = "json") -> dict:
         "meta": {"scenario": raw.get("scenario", source_name), "source": source_name},
         "targets": targets,
         "frames": frames,
+        "raw": raw,
     }
 
 
