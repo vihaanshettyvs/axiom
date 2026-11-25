@@ -117,7 +117,7 @@ with map_col:
         targets=targets,
         covered_ids=active_eval["covered_ids"],
     )
-    st.plotly_chart(fig, width="stretch")
+    st.plotly_chart(fig)
     render_target_table(active_eval)
 
 with lab_col:
