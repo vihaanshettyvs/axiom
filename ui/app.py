@@ -1,3 +1,4 @@
+from __future__ import annotations
 import sys
 import time
 from pathlib import Path
@@ -5,9 +6,9 @@ import plotly.graph_objects as go
 import streamlit as st
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from charts import build_mission_timeline
-from data_loader import evaluate_frame, list_json_files, load_mock_runlog, load_runlog_from_bytes, load_runlog_from_path
+from data_loader import evaluate_frame, format_json_label, list_json_files, load_firms_validation, load_mock_runlog, load_p4_report, load_runlog_from_bytes, load_runlog_from_path
 from map_view import build_map_figure
-from panels import render_kpi_cards, render_target_table
+from panels import render_events_feed, render_kpi_cards, render_target_table
 from retire_lab import render_retire_lab
 st.set_page_config(page_title="Orbital Triage Mission Control", layout="wide")
 if "t_idx" not in st.session_state:
@@ -21,15 +22,15 @@ with st.sidebar:
     brain_on = st.toggle("Brain ON (Triage AI)", value=True)
     st.divider()
     st.subheader("RunLog Data Source")
-    data_mode = st.radio("Source", ["Mock Data", "Real RunLog JSON"], index=0)
+    data_mode = st.radio("Source", ["Real RunLog JSON", "Mock Data"], index=0)
     runlog = None
     if data_mode == "Real RunLog JSON":
         json_files = list_json_files()
         if json_files:
-            selected_file = st.selectbox("Select JSON from data/", options=json_files, format_func=lambda p: p.name)
+            selected_file = st.selectbox("Select cached JSON", options=json_files, format_func=format_json_label)
             runlog = load_runlog_from_path(selected_file)
         else:
-            st.info("No .json files found in data/ yet. Upload one below:")
+            st.info("No .json files found yet. Upload one below:")
         uploaded = st.file_uploader("Or upload RunLog JSON", type=["json"])
         if uploaded is not None:
             runlog = load_runlog_from_bytes(uploaded)
@@ -38,13 +39,9 @@ with st.sidebar:
     source_label = runlog.get("meta", {}).get("source", "RunLog")
     st.caption(f"Source: **{source_label}**")
     st.caption(f"Retired satellites: **{len(st.session_state.retired_sats)}**")
-frames = runlog.get("frames", [])
-targets = runlog.get("targets", [])
-num_frames = len(frames)
-if num_frames == 0:
-    st.title("Orbital Triage - Policy Comparison")
-    raw_data = runlog.get("raw") if isinstance(runlog.get("raw"), dict) else {}
-    metrics_map = raw_data.get("metrics") if isinstance(raw_data.get("metrics"), dict) else {}
+def render_benchmark_view(raw_data: dict, title_text: str):
+    st.title(title_text)
+    metrics_map = raw_data.get("metrics") if isinstance(raw_data.get("metrics"), dict) else (raw_data.get("comparison") if isinstance(raw_data.get("comparison"), dict) else {})
     if metrics_map:
         top_keys = ["mean_time_to_detect_min", "mean_time_to_localize_min", "mean_detection_latency_min", "bandwidth_mb"]
         cols = st.columns(4)
@@ -77,10 +74,47 @@ if num_frames == 0:
             st.subheader("All Benchmark Metrics")
             st.dataframe(comp_rows, hide_index=True, width="stretch")
     else:
-        st.warning("No frame or benchmark data found in this JSON.")
+        st.json(raw_data)
+def render_firms_and_p4_sections():
+    st.divider()
+    tab_firms, tab_p4 = st.tabs(["NASA FIRMS 6-Seed Validation", "P4 Data & Sensing Report"])
+    with tab_firms:
+        st.info("Real-data variant: **real NASA fire locations, simulated spread** (VIIRS S-NPP 2023-07-12, 59.45N 112.64W).")
+        firms_rows = [{"Hazard": "FIRE-1 (real)", "Brain ON Mean Min (Seeds)": "27.5 (6/6)", "Brain OFF Mean Min (Seeds)": "89.6 (5/6)"}, {"Hazard": "FIRE-2 (real)", "Brain ON Mean Min (Seeds)": "55.7 (6/6)", "Brain OFF Mean Min (Seeds)": "86.5 (2/6)"}, {"Hazard": "FIRE-3 (real)", "Brain ON Mean Min (Seeds)": "10.2 (6/6)", "Brain OFF Mean Min (Seeds)": "62.4 (5/6)"}, {"Hazard": "LEAK-1 landfill (simulated)", "Brain ON Mean Min (Seeds)": "45.7 (6/6)", "Brain OFF Mean Min (Seeds)": "82.6 (5/6)"}, {"Hazard": "LEAK-2 (simulated) [Weak Row]", "Brain ON Mean Min (Seeds)": "2.0 (1/6)", "Brain OFF Mean Min (Seeds)": "93.4 (5/6)"}]
+        st.dataframe(firms_rows, hide_index=True, width="stretch")
+        st.warning("Disclosure: With real fires competing for attention, Brain ON finds LEAK-2 on only 1 of 6 seeds vs. 5 of 6 for Brain OFF.")
+        firms_raw = load_firms_validation()
+        if firms_raw:
+            with st.expander("View Raw out/firms_validation.json"):
+                st.json(firms_raw)
+    with tab_p4:
+        p4 = load_p4_report()
+        if p4:
+            runs = p4.get("runs", {})
+            on_sum = runs.get("brain_on", {}).get("summary", {})
+            off_sum = runs.get("brain_off", {}).get("summary", {})
+            det_on = on_sum.get("time_to_detect_min", {})
+            det_off = off_sum.get("time_to_detect_min", {})
+            loc_on = on_sum.get("time_to_localize_min", {})
+            loc_off = off_sum.get("time_to_localize_min", {})
+            if det_on:
+                hz_rows = [{"Hazard ID": k, "Detect ON (min)": det_on.get(k), "Detect OFF (min)": det_off.get(k), "Localize ON (min)": loc_on.get(k), "Localize OFF (min)": loc_off.get(k)} for k in det_on]
+                st.subheader("P4 Per-Hazard Detection & Localization")
+                st.dataframe(hz_rows, hide_index=True, width="stretch")
+        else:
+            st.info("p4_report.json not found.")
+frames = runlog.get("frames", [])
+targets = runlog.get("targets", [])
+num_frames = len(frames)
+if num_frames == 0:
+    raw_data = runlog.get("raw") if isinstance(runlog.get("raw"), dict) else {}
+    render_benchmark_view(raw_data, "Orbital Triage - Policy & Validation Comparison")
+    render_firms_and_p4_sections()
     st.stop()
 st.session_state.t_idx = min(st.session_state.t_idx, num_frames - 1)
 st.title("Orbital Triage Dashboard")
+if runlog.get("meta", {}).get("is_firms"):
+    st.info("Dataset Mode: **real NASA fire locations, simulated spread** (VIIRS S-NPP 2023-07-12, 59.45N 112.64W)")
 p1, p2, p3, p4 = st.columns([1.2, 1.0, 1.4, 5.4])
 with p1:
     play_label = "Pause" if st.session_state.is_playing else "Play"
@@ -108,16 +142,18 @@ baseline_eval = evaluate_frame(current_frame, targets, "brain_off", retired_set)
 no_retire_eval = evaluate_frame(current_frame, targets, active_mode, set())
 render_kpi_cards(active_eval, baseline_eval, brain_on)
 st.divider()
-map_col, lab_col = st.columns([2.6, 1.2])
+map_col, lab_col = st.columns([2.5, 1.3])
 with map_col:
     fig = build_map_figure(satellites=active_eval["satellites"], targets=targets, covered_ids=active_eval["covered_ids"])
     st.plotly_chart(fig)
+    render_events_feed(frames, st.session_state.t_idx)
     render_target_table(active_eval)
 with lab_col:
-    render_retire_lab(satellites=active_eval["satellites"], eval_no_retire=no_retire_eval, eval_with_retire=active_eval, brain_on=brain_on)
+    render_retire_lab(satellites=active_eval["satellites"], eval_no_retire=no_retire_eval, eval_with_retire=active_eval, brain_on=brain_on, retire_lab_data=runlog.get("retirement_lab"))
 st.divider()
 timeline_fig = build_mission_timeline(frames=frames, targets=targets, retired_sats=retired_set, current_idx=st.session_state.t_idx)
 st.plotly_chart(timeline_fig)
+render_firms_and_p4_sections()
 if st.session_state.is_playing:
     delay_map = {"1x": 0.6, "2x": 0.3, "5x": 0.12}
     time.sleep(delay_map[speed])

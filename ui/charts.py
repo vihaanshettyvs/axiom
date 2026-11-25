@@ -1,3 +1,4 @@
+from __future__ import annotations
 import plotly.graph_objects as go
 from data_loader import evaluate_frame
 def build_mission_timeline(frames: list[dict], targets: list[dict], retired_sats: set[str], current_idx: int) -> go.Figure:
