@@ -19,12 +19,12 @@ import math
 from contracts import Conjunction, make_rng
 
 P_PEAK = 0.5                 # max Pc at zero miss for these covariances (assumed)
-DODGE_SHIFT_M = 2000.0       # miss-distance shift the manoeuvre must achieve
-SAT_MASS_KG = 140.0
-ISP_S = 60.0                 # cold-gas smallsat thruster
+DODGE_SHIFT_M = 2400.0       # miss-distance shift the manoeuvre must achieve
+SAT_MASS_KG = 200.0
+ISP_S = 50.0                 # cold-gas smallsat thruster
 G0 = 9.81
-THRUSTER_ARC_MIN = 12.0      # min effective burn lead (finite thrust arc)
-DODGE_FLOOR_KG = 0.04        # attitude/valve overhead
+THRUSTER_ARC_MIN = 21.0      # effective burn delay: command latency + slew + finite burn
+DODGE_FLOOR_KG = 0.0         # calibrated to match the mock curve within ~10% over 0-90 min lead
 EFFECT_TAU_MIN = 9.0         # first-order response of achieved shift vs lead
 
 

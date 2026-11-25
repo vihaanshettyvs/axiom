@@ -16,9 +16,11 @@ chosen to be plausible and explainable, and to keep `RealPhysics` behaviourally 
 - `Pc = 0.5 * exp(-0.5 (miss/sigma)^2)`; miss distance is back-solved from the scripted Pc. Relative speed
   (7-14 km/s), size and covariance come from `make_rng(seed, "deb", debris_id)`.
 - `risk = Pc * consequence`, consequence = importance * (0.5 + 0.5 health) * severity(speed, size).
-- Dodge: along-track phasing shifts the miss by ~3 * dv * t; dv = 2 km / (3 (lead + 12 min)).
-  Fuel = 0.04 kg + rocket equation (140 kg, Isp 60 s). Effectiveness = 1 - exp(-lead / 9 min).
-  Both calibrated so cost falls and effectiveness rises with lead time (the ON/OFF story).
+- Dodge: along-track phasing shifts the miss by ~3 * dv * t; dv = 2.4 km / (3 (lead + 21 min)).
+  Fuel from the rocket equation (200 kg, Isp 50 s), no fixed floor. Effectiveness = 1 - exp(-lead / 9 min).
+  Parameters were calibrated so the cost curve stays within ~10% of the mock's over 0-90 min lead
+  (0.26 kg at zero lead, ~0.05 kg at 90 min); cost falls and effectiveness rises with lead time.
+  An earlier calibration was up to 43% above the mock at long lead and made brain-ON burn extra fuel.
 
 ## Degradation (`space/degradation.py`)
 1. Fuel - spent by the engine; propulsion-limited below 0.05 kg.
