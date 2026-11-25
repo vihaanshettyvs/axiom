@@ -70,7 +70,9 @@ def audit(path: str) -> dict:
                 repeated_retire[actor] += 1
             elif prev_status.get(actor) in DONE_STATES and typ in (
                     "OBSERVE", "DODGE", "DOWNLINK", "HANDOFF", "REQUEST_TUG"):
-                acts_after.append((f["t"], actor, typ))
+                # A satellite that is RETIRING may still drain its data buffer in ground contact (last breath).
+                if not (typ == "DOWNLINK" and prev_status.get(actor) == "RETIRING"):
+                    acts_after.append((f["t"], actor, typ))
             by_frame_actor[(f["t"], actor)].add(typ)
         prev_status = {s["id"]: s["status"] for s in f["satellites"]}
     for (t, actor), types in by_frame_actor.items():
