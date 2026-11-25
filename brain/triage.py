@@ -288,7 +288,7 @@ class TriageBrain:
                     continue
                 av = asm.get(c.debris_id)
                 if av is not None:
-                    if not av["feasible"] or not av["improved"]:
+                    if not av["feasible"] or not av["projected_improved"]:
                         continue                   # propulsion lost, no fuel margin, or the burn would not move the miss distance
                     # propellant is finite: do not spend it on this encounter if a riskier one still ahead needs it
                     held = sum(o["dodge_fuel_kg"] for k, o in asm.items() if k != c.debris_id and k in ahead
@@ -306,10 +306,10 @@ class TriageBrain:
                     if av is not None:
                         why += (f" Risk tier {av['risk_tier']} (score {av['risk_score']:.3f}); predicted miss "
                                 f"{av['predicted_miss_km']:.1f} km -> {av['predicted_miss_after_km']:.1f} km after the burn "
-                                f"({av['outcome'].lower()}).")
+                                f"(projected: {av['projected_outcome'].lower()}).")
                         prm.update(risk_tier=av["risk_tier"], risk_score=av["risk_score"],
                                    miss_km=av["predicted_miss_km"], miss_after_km=av["predicted_miss_after_km"],
-                                   outcome=av["outcome"])
+                                   projected_outcome=av["projected_outcome"])
                     a = Action(ActionType.DODGE, s.id, target_id=c.debris_id, params=prm)
                     cands.append(_mk(view.t, a, _clip(c.probability / 0.05), s.mission_importance, 0.0, cost, 0.0,
                                      rr, s.health, ben, why))

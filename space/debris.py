@@ -146,10 +146,22 @@ def dodge_effectiveness(lead_min: float) -> float:
 #   * predicted miss distance after the burn: the along-track phasing shift (DODGE_SHIFT_M * effectiveness)
 #     adds to the cross-track miss in quadrature, miss_after = sqrt(miss^2 + shift^2)
 #   * a risk tier from risk_score = likelihood * consequence, with fixed, documented thresholds
-#   * an outcome label: AVOIDED / REDUCED / INEFFECTIVE, and whether resources allow the burn at all
+#   * a PROJECTED outcome label: AVOIDED / REDUCED / INEFFECTIVE, and whether resources allow the burn at all
 # TCA is the scripted value; this module does not predict it. The miss distance is back-solved from the
 # scripted likelihood, so it is a consistent restatement of that likelihood, not an independent measurement.
+#
+# PROJECTED vs EXECUTION (two separate questions, never merged into one label):
+#   projected_outcome  "what the model says the burn WOULD achieve". It is computed even when the burn is not
+#                      possible (insufficient fuel), in which case it is purely hypothetical: nothing was avoided.
+#                      With failed propulsion the burn achieves nothing, so the projection is INEFFECTIVE.
+#   execution_outcome  "did the burn actually happen". NOT_EXECUTED for an assessment (no burn yet), EXECUTED once
+#                      physics performed it, FAILED_INSUFFICIENT_FUEL / FAILED_PROPULSION when it was refused.
+# Even EXECUTED does not mean a collision was avoided: the projected outcome stays a model projection.
 # --------------------------------------------------------------------------- #
+EXEC_NOT_EXECUTED = "NOT_EXECUTED"
+EXEC_EXECUTED = "EXECUTED"
+EXEC_FAILED_FUEL = "FAILED_INSUFFICIENT_FUEL"
+EXEC_FAILED_PROPULSION = "FAILED_PROPULSION"
 RISK_TIER_MEDIUM = 0.005     # risk_score below this is LOW
 RISK_TIER_HIGH = 0.02        # risk_score at or above this is HIGH; in between is MEDIUM
 DODGE_SAFE_SIGMA = 3.0       # predicted miss >= this many sigma after the burn counts as AVOIDED
@@ -199,8 +211,10 @@ def evaluate(e: dict, sat, t: float) -> dict:
         reason = "insufficient_fuel"
     else:
         reason = ""
-    outcome = ("INEFFECTIVE" if gain < DODGE_MIN_GAIN_KM
-               else "AVOIDED" if miss_after >= DODGE_SAFE_SIGMA * e["sigma_km"] else "REDUCED")
+    projected = ("INEFFECTIVE" if gain < DODGE_MIN_GAIN_KM
+                 else "AVOIDED" if miss_after >= DODGE_SAFE_SIGMA * e["sigma_km"] else "REDUCED")
+    note = ("" if reason == "" else
+            f"HYPOTHETICAL projection only: the burn is not possible ({reason}), so nothing is avoided.")
     return {
         "sat_id": sat.id, "debris_id": e["debris_id"],
         "tca_min": e["tca"], "time_to_tca_min": e["tca"] - t, "tca_source": "scripted",
@@ -210,7 +224,9 @@ def evaluate(e: dict, sat, t: float) -> dict:
         "risk_score": a["risk"], "risk_tier": risk_tier(a["risk"]),
         "lead_min": lead, "dodge_fuel_kg": cost, "dodge_effectiveness": eff, "shift_km": shift,
         "predicted_miss_after_km": miss_after, "miss_gain_km": gain,
-        "miss_after_sigma": miss_after / e["sigma_km"], "outcome": outcome, "improved": outcome != "INEFFECTIVE",
+        "miss_after_sigma": miss_after / e["sigma_km"],
+        "projected_outcome": projected, "projected_improved": projected != "INEFFECTIVE", "projection_note": note,
+        "execution_outcome": EXEC_NOT_EXECUTED,
         "residual_likelihood": e["p"] * (1.0 - eff),
         "feasible": reason == "", "infeasible_reason": reason,
         "fuel_available_kg": sat.fuel_kg, "fuel_after_kg": sat.fuel_kg - cost,

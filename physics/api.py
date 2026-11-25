@@ -7,7 +7,8 @@ Extras beyond PhysicsAPI (optional for P1/P3/P5):
   RealPhysics.space_weather / set_space_weather(w)   0..1, 0.5 nominal (Retirement Lab slider)
   retirement_lab(sat, t)        3-way comparison + do-nothing, frontend-ready rows
   conjunction_reports(sat, t)   Pc, miss distance, consequence, risk per upcoming conjunction
-  assess_conjunction(sat, t)    Collision Avoidance 2.0: miss before/after a dodge, risk tier, feasibility, outcome
+  assess_conjunction(sat, t)    Collision Avoidance 2.0: miss before/after a dodge, risk tier, feasibility,
+                                projected_outcome (hypothetical) vs execution_outcome (did the burn happen)
                                 (execute_dodge returns the same record plus fuel used)
   tug_rank(requests)            competing tug requests -> chosen + reason
   sat.orbit["last_breath"]      {verdict, reason, rul_min, point_of_no_return_min, urgency, ...}
@@ -138,7 +139,10 @@ class RealPhysics:
         a = debris.evaluate(e, sat, t)             # assessed on the satellite's state BEFORE this burn is debited
         lead, cost = a["lead_min"], a["dodge_fuel_kg"]
         if not sat.orbit.get("prop_ok", True) or sat.fuel_kg < cost:
-            return dict(a, executed=False, reason="propulsion failed or insufficient fuel", fuel_needed_kg=cost)
+            # refused: no burn, no route change. projected_* in `a` stays a hypothetical projection (see debris.py).
+            why = debris.EXEC_FAILED_PROPULSION if not sat.orbit.get("prop_ok", True) else debris.EXEC_FAILED_FUEL
+            return dict(a, executed=False, execution_outcome=why, reason="propulsion failed or insufficient fuel",
+                        fuel_needed_kg=cost)
         eff = a["dodge_effectiveness"]
         if debit_fuel:
             sat.fuel_kg -= cost
@@ -146,14 +150,15 @@ class RealPhysics:
         orbits.apply_route_change(sat.orbit, t, dphase_min=a["shift_km"] / 456.0, kind="collision_avoidance",
                                   note=f"dodge {debris_id}")
         sat.orbit.setdefault("dodged", []).append(debris_id)
-        return dict(a, executed=True, fuel_kg=cost, effectiveness=eff)
+        return dict(a, executed=True, execution_outcome=debris.EXEC_EXECUTED, fuel_kg=cost, effectiveness=eff)
 
     def assess_conjunction(self, sat: Satellite, t: float, debris_id: str = None,
                            horizon_min: float = 1e9) -> List[Dict[str, Any]]:
         """Collision Avoidance 2.0 (read-only): one assessment per upcoming, not-yet-dodged encounter on `sat`,
         highest risk_score first. Each dict carries the satellite and debris ids, time to TCA (scripted),
         predicted miss distance before and after a dodge, risk score and tier (LOW/MEDIUM/HIGH), dodge fuel
-        cost, feasibility (propulsion / fuel reserve) and an outcome label (AVOIDED / REDUCED / INEFFECTIVE).
+        cost, feasibility (propulsion / fuel reserve), a PROJECTED outcome (AVOIDED / REDUCED / INEFFECTIVE; hypothetical
+        when the burn is infeasible) and an execution_outcome (always NOT_EXECUTED here: an assessment burns nothing).
         Empty list = no conjunction. See debris.evaluate and docs/ASSUMPTIONS.md; heuristic, not operational."""
         done = sat.orbit.get("dodged", [])
         out = [debris.evaluate(e, sat, t) for e in self.enc.get(sat.id, [])

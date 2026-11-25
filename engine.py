@@ -482,7 +482,9 @@ class Engine:
                     self.m["dodges"] += 1
                     self._ev("DODGE", s.id, d.reason, res if isinstance(res, dict) else None)
             else:
-                self._ev("DODGE_FAILED", s.id, f"{s.id} lacked fuel to dodge {a.target_id}.", self._dodge_data(s, a.target_id))
+                row = self._dodge_data(s, a.target_id)       # projected_* here is hypothetical: no burn took place
+                self._ev("DODGE_FAILED", s.id, f"{s.id} lacked fuel to dodge {a.target_id}.",
+                         dict(row, executed=False, execution_outcome="FAILED_INSUFFICIENT_FUEL") if row else None)
         elif a.type == ActionType.RETIRE:
             s.status = Status.RETIRING.value
             s.orbit["retire_done_t"] = t + a.params["duration_min"]

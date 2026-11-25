@@ -90,9 +90,11 @@ def test_high_risk_conjunction_is_tiered_high_and_dodged_with_record():
     ds = brain_dodges(ph, sats, 10.0)
     assert len(ds) == 1
     prm = ds[0].action.params
-    assert prm["risk_tier"] == "HIGH" and prm["outcome"] == "AVOIDED"
+    assert prm["risk_tier"] == "HIGH" and prm["projected_outcome"] == "AVOIDED"
+    assert "outcome" not in prm and "execution_outcome" not in prm      # a decision is a plan: nothing has happened yet
     assert prm["miss_after_km"] > prm["miss_km"]
     assert "Risk tier HIGH" in ds[0].reason and "km after the burn" in ds[0].reason
+    assert "(projected: avoided)" in ds[0].reason                         # wording must not imply it already happened
 
 
 # ---- 4. successful avoidance (through the real engine) --------------------------------------- #
@@ -104,7 +106,8 @@ def test_successful_avoidance_records_miss_fuel_and_improvement(monkeypatch):
     ev = [e for f in log.frames for e in f.events if e["type"] == "DODGE"]
     assert len(ev) == 1
     d = ev[0]["data"]
-    assert d["executed"] and d["outcome"] == "AVOIDED" and d["improved"] is True
+    assert d["executed"] is True and d["execution_outcome"] == "EXECUTED"           # the burn really happened ...
+    assert d["projected_outcome"] == "AVOIDED" and d["projected_improved"] is True    # ... and the model projects success
     assert d["predicted_miss_after_km"] > d["predicted_miss_km"]
     assert d["fuel_kg"] == pytest.approx(debris.dodge_fuel_cost(d["lead_min"]))
     assert fuel0 - eng.sat(SAT).fuel_kg == pytest.approx(d["fuel_kg"])          # propellant debited exactly once
@@ -116,11 +119,13 @@ def test_ineffective_avoidance_zero_lead_is_flagged_and_skipped_by_brain():
     ph, sats = make_physics([(SAT, "DEB-LATE", 80, 0.15)])
     s = sat_of(sats)
     a = ph.assess_conjunction(s, 80.0)[0]                         # at TCA: no lead time left
-    assert a["outcome"] == "INEFFECTIVE" and a["improved"] is False
+    assert a["projected_outcome"] == "INEFFECTIVE" and a["projected_improved"] is False
+    assert a["execution_outcome"] == "NOT_EXECUTED"               # an assessment never burns anything
     assert a["miss_gain_km"] < debris.DODGE_MIN_GAIN_KM
     assert brain_dodges(ph, sats, 80.0) == []                     # brain will not burn for no gain
-    r = ph.execute_dodge(s, 80.0, "DEB-LATE")                     # the physics still records what happened if forced
-    assert r["executed"] and r["improved"] is False
+    r = ph.execute_dodge(s, 80.0, "DEB-LATE")                     # forced: the physics still records what happened
+    assert r["executed"] and r["execution_outcome"] == "EXECUTED"
+    assert r["projected_outcome"] == "INEFFECTIVE"                # executed is not the same as effective
 
 
 def test_brain_skips_a_burn_whose_predicted_miss_gain_is_too_small(monkeypatch):
@@ -131,19 +136,27 @@ def test_brain_skips_a_burn_whose_predicted_miss_gain_is_too_small(monkeypatch):
     assert len(brain_dodges(ph, sats, 50.0)) == 1                 # accepted with the default minimum gain
     monkeypatch.setattr(debris, "DODGE_MIN_GAIN_KM", 1.5)
     a = ph.assess_conjunction(s, 50.0)[0]
-    assert a["outcome"] == "INEFFECTIVE" and a["improved"] is False and a["feasible"]
+    assert a["projected_outcome"] == "INEFFECTIVE" and a["projected_improved"] is False and a["feasible"]
     assert brain_dodges(ph, sats, 50.0) == []                     # the economics did not change, only the evaluation
 
 
-def test_ineffective_avoidance_when_propulsion_failed(monkeypatch):
+def test_failed_propulsion_is_not_executed_and_never_reads_as_avoided(monkeypatch):
     monkeypatch.setattr(config, "CONJUNCTIONS", [(SAT, "DEB-NP", 80, 0.15)])
-    eng = engine.Engine("off", seed=42, duration=75)              # baseline would otherwise burn at low risk threshold
+    eng = engine.Engine("off", seed=42, duration=75)              # the baseline would otherwise burn at its risk threshold
     eng.sat(SAT).orbit["prop_ok"] = False
     fuel0 = eng.sat(SAT).fuel_kg
     log = eng.run()
-    kinds = [e["type"] for f in log.frames for e in f.events if e["type"].startswith("DODGE")]
-    assert "DODGE" not in kinds                                   # no dodge counted
+    evs = [e for f in log.frames for e in f.events if e["type"].startswith("DODGE")]
+    assert [e["type"] for e in evs] == ["DODGE_FAILED"]           # exactly one refusal, never a DODGE (and no retry spam)
+    d = evs[0]["data"]
+    assert d["executed"] is False and d["execution_outcome"] == "FAILED_PROPULSION"
+    assert d["feasible"] is False and d["infeasible_reason"] == "propulsion_failed"
+    assert d["projected_outcome"] == "INEFFECTIVE"                # a dead thruster achieves nothing: never AVOIDED
+    assert d["projected_outcome"] != "AVOIDED" and d["projected_improved"] is False
+    assert d["projection_note"].startswith("HYPOTHETICAL")
     assert eng.sat(SAT).fuel_kg == pytest.approx(fuel0)            # no propellant spent on a burn that cannot happen
+    assert not eng.sat(SAT).orbit.get("maneuvers")                 # and no route change was applied
+    assert "DEB-NP" not in eng.sat(SAT).orbit.get("dodged", [])
     assert log.frames[-1].metrics["dodges"] == 0
 
 
@@ -155,7 +168,25 @@ def test_insufficient_fuel_is_infeasible_and_brain_does_not_dodge():
     a = ph.assess_conjunction(s, 10.0)[0]
     assert a["feasible"] is False and a["infeasible_reason"] == "insufficient_fuel"
     assert a["fuel_after_kg"] < config.FUEL_RESERVE_KG
+    # the projection is still computed, but it is explicitly hypothetical and nothing has been executed
+    assert a["projected_outcome"] in ("AVOIDED", "REDUCED") and a["projected_improved"] is True
+    assert a["execution_outcome"] == "NOT_EXECUTED"
+    assert a["projection_note"].startswith("HYPOTHETICAL") and "insufficient_fuel" in a["projection_note"]
     assert brain_dodges(ph, sats, 10.0) == []
+
+
+def test_insufficient_fuel_execute_dodge_is_refused_without_side_effects():
+    ph, sats = make_physics([(SAT, "DEB-DRY", 80, 0.15)])
+    s = sat_of(sats)
+    s.fuel_kg = 0.0
+    r = ph.execute_dodge(s, 10.0, "DEB-DRY")
+    assert r["executed"] is False and r["execution_outcome"] == "FAILED_INSUFFICIENT_FUEL"
+    assert r["projected_outcome"] in ("AVOIDED", "REDUCED")       # hypothetical: what a funded burn would have done
+    assert s.fuel_kg == 0.0 and not s.orbit.get("maneuvers") and "DEB-DRY" not in s.orbit.get("dodged", [])
+    s.fuel_kg, s.orbit["prop_ok"] = 1.0, False                    # plenty of fuel, but the thruster is dead
+    r = ph.execute_dodge(s, 10.0, "DEB-DRY")
+    assert r["executed"] is False and r["execution_outcome"] == "FAILED_PROPULSION"
+    assert s.fuel_kg == 1.0 and not s.orbit.get("maneuvers")
 
 
 def test_brain_respects_the_physics_feasibility_verdict():
@@ -168,15 +199,23 @@ def test_brain_respects_the_physics_feasibility_verdict():
     assert brain_dodges(ph, sats, 10.0) == []
 
 
-def test_insufficient_fuel_baseline_failure_is_recorded_not_fatal(monkeypatch):
-    monkeypatch.setattr(config, "CONJUNCTIONS", [(SAT, "DEB-DRY", 60, 0.15)])
-    eng = engine.Engine("off", seed=42, duration=62)
-    eng.sat(SAT).fuel_kg = 0.0
-    log = eng.run()
-    failed = [e for f in log.frames for e in f.events if e["type"] == "DODGE_FAILED"]
-    kinds = {e["type"] for f in log.frames for e in f.events}
-    assert "DODGE" not in kinds and log.frames[-1].metrics["dodges"] == 0
-    assert all(e["data"]["infeasible_reason"] in ("insufficient_fuel", "propulsion_failed") for e in failed if "data" in e)
+def test_engine_records_a_dodge_that_lacked_fuel_as_failed_not_avoided(monkeypatch):
+    # Both policies check fuel before ordering a dodge, so the engine's own fuel-failure path only triggers when
+    # propellant drops between ordering and applying (e.g. a slew burn in the same minute). Drive it directly.
+    from contracts import Action, Decision
+    monkeypatch.setattr(config, "CONJUNCTIONS", [(SAT, "DEB-DRY", 80, 0.15)])
+    eng = engine.Engine("on", seed=42, duration=20)
+    s = eng.sat(SAT)
+    s.fuel_kg = 0.02                                              # below the ~0.06 kg this burn costs
+    eng.t = 10.0
+    act = Action(ActionType.DODGE, SAT, target_id="DEB-DRY", params={"lead": 70.0, "eff": 1.0})
+    eng._apply(Decision(10.0, act, 0.5, 0.8, 0.0, 0.06, 0.0, 0.15, 0.9, 5.0, "test"))
+    ev = [e for e in eng.events if e["type"].startswith("DODGE")]
+    assert [e["type"] for e in ev] == ["DODGE_FAILED"]
+    d = ev[0]["data"]
+    assert d["executed"] is False and d["execution_outcome"] == "FAILED_INSUFFICIENT_FUEL"
+    assert d["projected_outcome"] in ("AVOIDED", "REDUCED") and d["projection_note"].startswith("HYPOTHETICAL")
+    assert s.fuel_kg == pytest.approx(0.02) and eng.m["dodges"] == 0 and (SAT, "DEB-DRY") not in eng.dodged
 
 
 # ---- 7. multiple conjunctions ----------------------------------------------------------------- #
@@ -232,7 +271,7 @@ def test_brain_on_vs_off_dodge_quality(monkeypatch):
     assert sum(d["fuel_kg"] for d in on) < sum(d["fuel_kg"] for d in off)             # ... and more cheaply
     assert min(d["predicted_miss_after_km"] / d["miss_sigma_km"] for d in on) >= \
         min(d["predicted_miss_after_km"] / d["miss_sigma_km"] for d in off)
-    assert all(d["improved"] for d in on)
+    assert all(d["projected_improved"] and d["execution_outcome"] == "EXECUTED" for d in on)
     assert log_on.frames[-1].metrics["expected_sat_loss"] < log_off.frames[-1].metrics["expected_sat_loss"]
 
 
@@ -270,7 +309,7 @@ def test_brain_falls_back_to_original_logic_on_mock_physics():
     v = WorldView(10.0, [s], [], None, [], {SAT: [big]}, {SAT: []}, {"available": False, "eta_min": 25.0, "service_min": 15.0},
                   [], config.LINK_MB_PER_MIN, 42)
     ds = dodges(brain._bus_actions(v))
-    assert len(ds) == 1 and "outcome" not in ds[0].action.params
+    assert len(ds) == 1 and "projected_outcome" not in ds[0].action.params
 
 
 def test_baseline_policy_unchanged_still_dodges_late():
