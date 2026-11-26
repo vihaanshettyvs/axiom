@@ -135,7 +135,7 @@ targets = runlog.get("targets", [])
 num_frames = len(frames)
 if num_frames == 0:
     raw_data = runlog.get("raw") if isinstance(runlog.get("raw"), dict) else {}
-    render_benchmark_view(raw_data, "Orbital Triage - Policy & Validation Comparison")
+    render_benchmark_view(raw_data, "IRIS - Policy & Validation Comparison")
     render_firms_and_p4_sections(bool(runlog.get("meta", {}).get("is_firms")))
     st.stop()
 st.session_state.t_idx = min(st.session_state.t_idx, num_frames - 1)
