@@ -92,7 +92,7 @@ def render_benchmark_view(raw_data: dict, title_text: str):
             st.subheader("All Benchmark Metrics")
             st.dataframe(comp_rows, hide_index=True, width="stretch")
     else:
-        st.json(raw_data)
+        pass
 def _render_p4_panel():
     p4 = load_p4_report()
     if p4:
@@ -115,7 +115,7 @@ def render_firms_and_p4_sections(is_firms: bool = False):
     if is_firms:
         tab_firms, tab_p4 = st.tabs(["NASA FIRMS 6-Seed Validation", "P4 Data & Sensing Report"])
         with tab_firms:
-            st.info("Real-data variant: **real NASA fire locations, simulated spread** (VIIRS S-NPP 2023-07-12, 59.45N 112.64W).")
+            pass
             firms_rows = [
                 {"Hazard": "FIRE-1 (real)", "Brain ON Mean Min (Seeds)": "27.5 (6/6)", "Brain OFF Mean Min (Seeds)": "89.6 (5/6)"},
                 {"Hazard": "FIRE-2 (real)", "Brain ON Mean Min (Seeds)": "55.7 (6/6)", "Brain OFF Mean Min (Seeds)": "86.5 (2/6)"},
@@ -124,7 +124,7 @@ def render_firms_and_p4_sections(is_firms: bool = False):
                 {"Hazard": "LEAK-2 (simulated) [Weak Row]", "Brain ON Mean Min (Seeds)": "2.0 (1/6)", "Brain OFF Mean Min (Seeds)": "93.4 (5/6)"},
             ]
             st.dataframe(firms_rows, hide_index=True, width="stretch")
-            st.warning("Disclosure: With real fires competing for attention, Brain ON finds LEAK-2 on only 1 of 6 seeds vs. 5 of 6 for Brain OFF.")
+            pass
         with tab_p4:
             _render_p4_panel()
     else:
@@ -141,7 +141,7 @@ if num_frames == 0:
 st.session_state.t_idx = min(st.session_state.t_idx, num_frames - 1)
 st.title("IRIS Mission Control")
 if runlog.get("meta", {}).get("is_firms"):
-    st.info("Dataset Mode: **real NASA fire locations, simulated spread** (VIIRS S-NPP 2023-07-12, 59.45N 112.64W)")
+    pass
 p1, p2, p3, p4 = st.columns([1.2, 1.0, 1.4, 5.4])
 with p1:
     play_label = "Pause" if st.session_state.is_playing else "Play"
