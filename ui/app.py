@@ -38,6 +38,7 @@ with st.sidebar:
     data_mode = st.radio("Source", ["Real RunLog JSON", "Mock Data"], index=0)
     runlog = None
     if data_mode == "Real RunLog JSON":
+        from data_loader import get_grouped_json_files
         grouped_files = get_grouped_json_files()
         if grouped_files:
             chosen_group = st.selectbox("Scenario Category", options=list(grouped_files.keys()))
