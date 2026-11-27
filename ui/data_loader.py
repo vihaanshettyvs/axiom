@@ -184,7 +184,7 @@ def evaluate_frame(frame: dict, targets: list[dict], mode: str, retired_sats: se
 
 CURATED_GROUPS = {
     "1. Primary Demo (Seed 42)": [
-        ("Brain ON - Adaptive Triage Replay", "out/demo/runlog_brain_on.json"),
+        ("Brain ON - IRIS Adaptive Replay", "out/demo/runlog_brain_on.json"),
         ("Brain OFF - Baseline Lawnmower", "out/demo/runlog_brain_off.json"),
         ("ON vs OFF Metrics Comparison", "out/demo/comparison.json"),
         ("P4 Sensing & Hazard Report", "out/demo/p4_report.json"),
