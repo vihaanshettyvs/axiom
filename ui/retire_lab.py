@@ -27,7 +27,7 @@ def render_retire_lab(satellites: list[dict], eval_no_retire: dict, eval_with_re
         after_cov = eval_with_retire["metrics"]["targets_covered_pct"]
         drop = round(after_cov - before_cov, 1)
         if brain_on:
-            st.warning(f"{len(retired_set)} satellite(s) retired. Coverage impact: **{drop:+.1f}%** (Brain ON re-tasking active fleet).")
+            pass
         else:
             st.error(f"{len(retired_set)} satellite(s) retired. Coverage impact: **{drop:+.1f}%** (Turn Brain ON to re-task).")
         if st.button("Restore All Satellites", key="restore_all_btn"):

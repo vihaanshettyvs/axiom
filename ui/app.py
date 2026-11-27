@@ -5,12 +5,25 @@ from pathlib import Path
 import plotly.graph_objects as go
 import streamlit as st
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from intro import INTRO_SECONDS, render_intro
 from charts import build_mission_timeline
 from data_loader import evaluate_frame, get_grouped_json_files, load_mock_runlog, load_p4_report, load_runlog_from_bytes, load_runlog_from_path
 from map_view import build_map_figure
 from panels import render_events_feed, render_kpi_cards, render_target_table
 from retire_lab import render_retire_lab
-st.set_page_config(page_title="Orbital Triage Mission Control", layout="wide")
+st.set_page_config(page_title="IRIS Mission Control", layout="wide")
+
+# Play the cinematic intro once per session.
+if "intro_complete" not in st.session_state:
+    st.session_state.intro_complete = False
+
+if not st.session_state.intro_complete:
+    render_intro()
+    time.sleep(INTRO_SECONDS)
+    st.session_state.intro_complete = True
+    st.rerun()
+
 if "t_idx" not in st.session_state:
     st.session_state.t_idx = 0
 if "is_playing" not in st.session_state:
@@ -25,6 +38,7 @@ with st.sidebar:
     data_mode = st.radio("Source", ["Real RunLog JSON", "Mock Data"], index=0)
     runlog = None
     if data_mode == "Real RunLog JSON":
+        from data_loader import get_grouped_json_files
         grouped_files = get_grouped_json_files()
         if grouped_files:
             chosen_group = st.selectbox("Scenario Category", options=list(grouped_files.keys()))
@@ -78,7 +92,7 @@ def render_benchmark_view(raw_data: dict, title_text: str):
             st.subheader("All Benchmark Metrics")
             st.dataframe(comp_rows, hide_index=True, width="stretch")
     else:
-        st.json(raw_data)
+        pass
 def _render_p4_panel():
     p4 = load_p4_report()
     if p4:
@@ -101,7 +115,7 @@ def render_firms_and_p4_sections(is_firms: bool = False):
     if is_firms:
         tab_firms, tab_p4 = st.tabs(["NASA FIRMS 6-Seed Validation", "P4 Data & Sensing Report"])
         with tab_firms:
-            st.info("Real-data variant: **real NASA fire locations, simulated spread** (VIIRS S-NPP 2023-07-12, 59.45N 112.64W).")
+            pass
             firms_rows = [
                 {"Hazard": "FIRE-1 (real)", "Brain ON Mean Min (Seeds)": "27.5 (6/6)", "Brain OFF Mean Min (Seeds)": "89.6 (5/6)"},
                 {"Hazard": "FIRE-2 (real)", "Brain ON Mean Min (Seeds)": "55.7 (6/6)", "Brain OFF Mean Min (Seeds)": "86.5 (2/6)"},
@@ -110,7 +124,7 @@ def render_firms_and_p4_sections(is_firms: bool = False):
                 {"Hazard": "LEAK-2 (simulated) [Weak Row]", "Brain ON Mean Min (Seeds)": "2.0 (1/6)", "Brain OFF Mean Min (Seeds)": "93.4 (5/6)"},
             ]
             st.dataframe(firms_rows, hide_index=True, width="stretch")
-            st.warning("Disclosure: With real fires competing for attention, Brain ON finds LEAK-2 on only 1 of 6 seeds vs. 5 of 6 for Brain OFF.")
+            pass
         with tab_p4:
             _render_p4_panel()
     else:
@@ -121,13 +135,13 @@ targets = runlog.get("targets", [])
 num_frames = len(frames)
 if num_frames == 0:
     raw_data = runlog.get("raw") if isinstance(runlog.get("raw"), dict) else {}
-    render_benchmark_view(raw_data, "Orbital Triage - Policy & Validation Comparison")
+    render_benchmark_view(raw_data, "IRIS - Policy & Validation Comparison")
     render_firms_and_p4_sections(bool(runlog.get("meta", {}).get("is_firms")))
     st.stop()
 st.session_state.t_idx = min(st.session_state.t_idx, num_frames - 1)
-st.title("Orbital Triage Dashboard")
+st.title("IRIS Mission Control")
 if runlog.get("meta", {}).get("is_firms"):
-    st.info("Dataset Mode: **real NASA fire locations, simulated spread** (VIIRS S-NPP 2023-07-12, 59.45N 112.64W)")
+    pass
 p1, p2, p3, p4 = st.columns([1.2, 1.0, 1.4, 5.4])
 with p1:
     play_label = "Pause" if st.session_state.is_playing else "Play"
