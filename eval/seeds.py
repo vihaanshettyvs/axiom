@@ -1,0 +1,3 @@
+DEMO_SEED = 100
+BENCHMARK_SEEDS = list(range(100, 150))
+QUICK_SEEDS = list(range(100, 110))
