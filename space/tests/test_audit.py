@@ -20,6 +20,17 @@ def write(frames):
 
 
 class TestAuditor(unittest.TestCase):
+    def test_downlink_while_retiring_is_allowed_but_observe_is_not(self):
+        dec = lambda t, typ: {"action": {"type": typ, "actor_id": "S1"}, "reason": "x", "t": t}
+        base = lambda t, status, decs, x: {"t": t, "satellites": [sat("S1", status=status, pos=(x, 0))],
+                                           "decisions": decs, "events": []}
+        ok = [base(0, "RETIRING", [], 0), base(1, "RETIRING", [dec(1, "DOWNLINK")], 1),
+              base(2, "RETIRED", [], 2)]
+        self.assertEqual(audit_runlog.audit(write(ok))["fails"], [])
+        bad = [base(0, "RETIRING", [], 0), base(1, "RETIRING", [dec(1, "OBSERVE")], 1),
+               base(2, "RETIRED", [dec(2, "DOWNLINK")], 2)]
+        self.assertIn("after retirement", " | ".join(audit_runlog.audit(write(bad))["fails"]))
+
     def test_clean_log_passes(self):
         fr = [{"t": 0, "satellites": [sat("S1", pos=(0, 0))], "decisions": [], "events": []},
               {"t": 1, "satellites": [sat("S1", pos=(1, 0))], "decisions": [], "events": []}]

@@ -248,8 +248,20 @@ class Engine:
     def sat(self, sid: str) -> Satellite:
         return next(s for s in self.sats if s.id == sid)
 
-    def _ev(self, typ: str, actor: str, msg: str) -> None:
-        self.events.append(dict(t=self.t, type=typ, actor=actor, msg=msg))
+    def _ev(self, typ: str, actor: str, msg: str, data: Optional[Dict[str, Any]] = None) -> None:
+        ev = dict(t=self.t, type=typ, actor=actor, msg=msg)
+        if data:                                  # optional structured detail (e.g. DODGE avoidance record); consumers may ignore it
+            ev["data"] = data
+        self.events.append(ev)
+
+    def _dodge_data(self, s: Satellite, debris_id: str) -> Optional[Dict[str, Any]]:
+        """P2's avoidance assessment for one encounter (None on mock physics): used to explain a failed dodge."""
+        f = getattr(self.physics, "assess_conjunction", None)
+        try:
+            rows = f(s, self.t, debris_id) if f else []
+        except Exception:                                                # noqa: BLE001 - explanatory only, never fatal
+            rows = []
+        return rows[0] if rows else None
 
     # -- optional extensions (e.g. P4 telemetry) ----------------------------- #
     # An extension is any class with OPTIONAL methods  on_reset(meta)  on_step(frame)  on_end(summary).
@@ -452,19 +464,27 @@ class Engine:
             lead = a.params.get("lead", 0.0)
             cost = self.physics.dodge_fuel_cost(s, lead)
             if s.fuel_kg >= cost:
-                self.dodged[(s.id, a.target_id)] = self.physics.dodge_effectiveness(s, lead)
-                self._burn(s, cost)
-                self._last_dodge[s.id] = t
-                shift = getattr(self.physics, "execute_dodge", None)      # P2: route change; fuel already debited here
+                shift = getattr(self.physics, "execute_dodge", None)      # P2: route change; fuel is debited just below
+                res = None
                 if shift:
-                    try:
-                        shift(s, t, a.target_id, debit_fuel=False)
+                    try:                                                  # runs BEFORE the burn so P2 assesses the pre-burn state
+                        res = shift(s, t, a.target_id, debit_fuel=False)
                     except Exception as ex:                              # optional hook, never fatal
                         self._ev("MODULE_WARNING", "ENGINE", f"execute_dodge unavailable: {ex}")
-                self.m["dodges"] += 1
-                self._ev("DODGE", s.id, d.reason)
+                if isinstance(res, dict) and res.get("executed") is False:
+                    # P2 refused the burn (e.g. propulsion failed): no propellant is spent and no dodge is counted
+                    self.dodged[(s.id, a.target_id)] = 0.0
+                    self._ev("DODGE_FAILED", s.id, f"{s.id} could not dodge {a.target_id}: {res.get('reason', 'refused')}.", res)
+                else:
+                    self.dodged[(s.id, a.target_id)] = self.physics.dodge_effectiveness(s, lead)
+                    self._burn(s, cost)
+                    self._last_dodge[s.id] = t
+                    self.m["dodges"] += 1
+                    self._ev("DODGE", s.id, d.reason, res if isinstance(res, dict) else None)
             else:
-                self._ev("DODGE_FAILED", s.id, f"{s.id} lacked fuel to dodge {a.target_id}.")
+                row = self._dodge_data(s, a.target_id)       # projected_* here is hypothetical: no burn took place
+                self._ev("DODGE_FAILED", s.id, f"{s.id} lacked fuel to dodge {a.target_id}.",
+                         dict(row, executed=False, execution_outcome="FAILED_INSUFFICIENT_FUEL") if row else None)
         elif a.type == ActionType.RETIRE:
             s.status = Status.RETIRING.value
             s.orbit["retire_done_t"] = t + a.params["duration_min"]
