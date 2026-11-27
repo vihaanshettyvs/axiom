@@ -1,3 +1,4 @@
+from __future__ import annotations
 """Load and replay historical NASA FIRMS active-fire detections."""
 
 import csv
