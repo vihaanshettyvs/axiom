@@ -1,4 +1,4 @@
-"""Cinematic intro for the Orbital Triage dashboard.
+"""Cinematic intro for the IRIS dashboard.
 
 Pure HTML canvas, no external libraries and no network needed (the Orbitron
 font is optional and falls back to system fonts).

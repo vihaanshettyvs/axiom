@@ -73,7 +73,7 @@ def generate_mock_runlog(num_steps: int = 30) -> dict:
 
     return {
         "meta": {
-            "scenario": "Mock Orbital Triage (6 Sats, 8 Targets)",
+            "scenario": "Mock IRIS (6 Sats, 8 Targets)",
             "source": "mock",
         },
         "targets": TARGETS,

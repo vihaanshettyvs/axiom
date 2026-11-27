@@ -1,3 +1,4 @@
+from __future__ import annotations
 """Deterministic simulated satellite health telemetry."""
 
 from dataclasses import dataclass
