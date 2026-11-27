@@ -1,188 +1,109 @@
-from __future__ import annotations
 import sys
-import time
 from pathlib import Path
-import plotly.graph_objects as go
+
 import streamlit as st
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from intro import INTRO_SECONDS, render_intro
-from charts import build_mission_timeline
-from data_loader import evaluate_frame, get_grouped_json_files, load_mock_runlog, load_p4_report, load_runlog_from_bytes, load_runlog_from_path
-from map_view import build_map_figure
-from panels import render_events_feed, render_kpi_cards, render_target_table
-from retire_lab import render_retire_lab
-st.set_page_config(page_title="IRIS Mission Control", layout="wide")
+import theme
+from data_loader import (decisions_upto, events_upto, frame_at, list_runlogs, load_bytes, load_path, pick_default)
+from map_view import build_map
+from panels import (render_decisions, render_events, render_hero, render_kpis, render_retirement_lab,
+                    render_satellite_table, render_status_strip, render_summary, render_timeline)
 
-# Play the cinematic intro once per session.
-if "intro_complete" not in st.session_state:
-    st.session_state.intro_complete = False
+st.set_page_config(page_title="ORBITA Mission Control", page_icon="🛰️", layout="wide")
+theme.inject()
 
-if not st.session_state.intro_complete:
-    render_intro()
-    time.sleep(INTRO_SECONDS)
-    st.session_state.intro_complete = True
-    st.rerun()
+st.session_state.setdefault("t_slider", 0)
+st.session_state.setdefault("last_click", None)
 
-if "t_idx" not in st.session_state:
-    st.session_state.t_idx = 0
-if "is_playing" not in st.session_state:
-    st.session_state.is_playing = False
-if "retired_sats" not in st.session_state:
-    st.session_state.retired_sats = set()
+
+def key_of(log: dict) -> str:
+    return f"{log.get('_name', '')}|{log['meta'].get('mode')}"
+
+
+def pick_log(label: str, mode: str):
+    paths = list_runlogs()
+    log = None
+    if paths:
+        i = st.selectbox(f"{label} RunLog", range(len(paths)), index=pick_default(paths, mode),
+                         format_func=lambda k: paths[k].name, key=f"sel_{mode}")
+        log = load_path(str(paths[i]))
+    up = st.file_uploader(f"Or upload {label} RunLog", type=["json"], key=f"up_{mode}")
+    if up is not None:
+        log = load_bytes(up.getvalue(), up.name)
+    return log
+
+
 with st.sidebar:
-    st.title("Mission Controls")
-    brain_on = st.toggle("Brain ON (Triage AI)", value=True)
+    st.markdown("### 🛰️ Mission Controls")
+    view = st.radio("View", ["Brain ON", "Brain OFF", "Side by side"], index=0)
+    belief = st.toggle("Show brain belief heatmap", value=False, help="Where the agent believes hazards are (adds data to the animation).")
+    weather = st.slider("Space weather (retirement lab)", 0.0, 1.0, 0.5, 0.25)
     st.divider()
-    st.subheader("RunLog Data Source")
-    data_mode = st.radio("Source", ["Real RunLog JSON", "Mock Data"], index=0)
-    runlog = None
-    if data_mode == "Real RunLog JSON":
-        from data_loader import get_grouped_json_files
-        grouped_files = get_grouped_json_files()
-        if grouped_files:
-            chosen_group = st.selectbox("Scenario Category", options=list(grouped_files.keys()))
-            entries = grouped_files[chosen_group]
-            chosen_idx = st.selectbox("Select Run / Report", options=range(len(entries)), format_func=lambda i: entries[i][0])
-            selected_label, selected_file = entries[chosen_idx]
-            runlog = load_runlog_from_path(selected_file)
-            runlog.setdefault("meta", {})["source"] = f"{chosen_group} -> {selected_label}"
-        else:
-            st.info("No .json files found yet. Upload one below:")
-        uploaded = st.file_uploader("Or upload RunLog JSON", type=["json"])
-        if uploaded is not None:
-            runlog = load_runlog_from_bytes(uploaded)
-    if runlog is None:
-        runlog = load_mock_runlog()
-    source_label = runlog.get("meta", {}).get("source", "RunLog")
-    st.caption(f"Source: **{source_label}**")
-    st.caption(f"Retired satellites: **{len(st.session_state.retired_sats)}**")
-def render_benchmark_view(raw_data: dict, title_text: str):
-    st.title(title_text)
-    metrics_map = raw_data.get("metrics") if isinstance(raw_data.get("metrics"), dict) else (raw_data.get("comparison") if isinstance(raw_data.get("comparison"), dict) else {})
-    if metrics_map:
-        top_keys = ["mean_time_to_detect_min", "mean_time_to_localize_min", "mean_detection_latency_min", "bandwidth_mb"]
-        cols = st.columns(4)
-        for idx, k in enumerate(top_keys):
-            entry = metrics_map.get(k)
-            if isinstance(entry, dict):
-                b_on = entry.get("brain_on", "-")
-                imp = entry.get("improvement_pct")
-                with cols[idx]:
-                    st.metric(label=k.replace("_", " ").title(), value=f"{b_on:.2f}" if isinstance(b_on, (int, float)) else str(b_on), delta=f"{imp:+.1f}% improvement" if isinstance(imp, (int, float)) else None)
-        comp_rows = []
-        bar_metrics, bar_on, bar_off = [], [], []
-        for metric_name, vals in metrics_map.items():
-            if isinstance(vals, dict):
-                on_v = vals.get("brain_on")
-                off_v = vals.get("brain_off")
-                imp_v = vals.get("improvement_pct")
-                comp_rows.append({"Metric": metric_name, "Brain ON": round(on_v, 4) if isinstance(on_v, float) else on_v, "Brain OFF": round(off_v, 4) if isinstance(off_v, float) else off_v, "Improvement (%)": round(imp_v, 2) if isinstance(imp_v, float) else imp_v})
-                if isinstance(on_v, (int, float)) and isinstance(off_v, (int, float)):
-                    bar_metrics.append(metric_name)
-                    bar_on.append(on_v)
-                    bar_off.append(off_v)
-        if bar_metrics:
-            bar_fig = go.Figure()
-            bar_fig.add_trace(go.Bar(name="Brain ON", x=bar_metrics, y=bar_on))
-            bar_fig.add_trace(go.Bar(name="Brain OFF", x=bar_metrics, y=bar_off))
-            bar_fig.update_layout(barmode="group", height=340, margin=dict(l=20, r=20, t=20, b=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-            st.plotly_chart(bar_fig)
-        if comp_rows:
-            st.subheader("All Benchmark Metrics")
-            st.dataframe(comp_rows, hide_index=True, width="stretch")
-    else:
-        pass
-def _render_p4_panel():
-    p4 = load_p4_report()
-    if p4:
-        runs = p4.get("runs", {})
-        on_sum = runs.get("brain_on", {}).get("summary", {})
-        off_sum = runs.get("brain_off", {}).get("summary", {})
-        det_on = on_sum.get("time_to_detect_min", {})
-        det_off = off_sum.get("time_to_detect_min", {})
-        loc_on = on_sum.get("time_to_localize_min", {})
-        loc_off = off_sum.get("time_to_localize_min", {})
-        if det_on:
-            hz_rows = [{"Hazard ID": k, "Detect ON (min)": det_on.get(k), "Detect OFF (min)": det_off.get(k), "Localize ON (min)": loc_on.get(k), "Localize OFF (min)": loc_off.get(k)} for k in det_on]
-            st.subheader("P4 Per-Hazard Detection & Localization")
-            st.dataframe(hz_rows, hide_index=True, width="stretch")
-    else:
-        st.info("p4_report.json not found.")
+    try:
+        log_on = pick_log("Brain ON", "BRAIN_ON")
+        log_off = pick_log("Brain OFF", "BRAIN_OFF")
+    except Exception as e:
+        st.error(str(e))
+        st.stop()
 
-def render_firms_and_p4_sections(is_firms: bool = False):
-    st.divider()
-    if is_firms:
-        tab_firms, tab_p4 = st.tabs(["NASA FIRMS 6-Seed Validation", "P4 Data & Sensing Report"])
-        with tab_firms:
-            pass
-            firms_rows = [
-                {"Hazard": "FIRE-1 (real)", "Brain ON Mean Min (Seeds)": "27.5 (6/6)", "Brain OFF Mean Min (Seeds)": "89.6 (5/6)"},
-                {"Hazard": "FIRE-2 (real)", "Brain ON Mean Min (Seeds)": "55.7 (6/6)", "Brain OFF Mean Min (Seeds)": "86.5 (2/6)"},
-                {"Hazard": "FIRE-3 (real)", "Brain ON Mean Min (Seeds)": "10.2 (6/6)", "Brain OFF Mean Min (Seeds)": "62.4 (5/6)"},
-                {"Hazard": "LEAK-1 landfill (simulated)", "Brain ON Mean Min (Seeds)": "45.7 (6/6)", "Brain OFF Mean Min (Seeds)": "82.6 (5/6)"},
-                {"Hazard": "LEAK-2 (simulated) [Weak Row]", "Brain ON Mean Min (Seeds)": "2.0 (1/6)", "Brain OFF Mean Min (Seeds)": "93.4 (5/6)"},
-            ]
-            st.dataframe(firms_rows, hide_index=True, width="stretch")
-            pass
-        with tab_p4:
-            _render_p4_panel()
-    else:
-        _render_p4_panel()
-
-frames = runlog.get("frames", [])
-targets = runlog.get("targets", [])
-num_frames = len(frames)
-if num_frames == 0:
-    raw_data = runlog.get("raw") if isinstance(runlog.get("raw"), dict) else {}
-    render_benchmark_view(raw_data, "IRIS - Policy & Validation Comparison")
-    render_firms_and_p4_sections(bool(runlog.get("meta", {}).get("is_firms")))
+if log_on is None and log_off is None:
+    st.error("No RunLog found. Put runlog_*.json files in data/runlogs/ or upload them in the sidebar.")
     st.stop()
-st.session_state.t_idx = min(st.session_state.t_idx, num_frames - 1)
-st.title("IRIS Mission Control")
-if runlog.get("meta", {}).get("is_firms"):
-    pass
-p1, p2, p3, p4 = st.columns([1.2, 1.0, 1.4, 5.4])
-with p1:
-    play_label = "Pause" if st.session_state.is_playing else "Play"
-    if st.button(play_label, width="stretch"):
-        st.session_state.is_playing = not st.session_state.is_playing
+
+if view == "Side by side" and not (log_on and log_off):
+    st.warning("Side by side needs both logs; showing the one that is loaded.")
+    view = "Brain ON"
+primary = log_on if view != "Brain OFF" else log_off
+primary = primary or log_on or log_off
+secondary = log_off if primary is log_on else log_on
+primary_label = "Brain ON" if primary is log_on else "Brain OFF"
+secondary_label = "Brain OFF" if primary is log_on else "Brain ON"
+n_frames = min(len(l["frames"]) for l in (log_on, log_off) if l)
+st.session_state.t_slider = min(st.session_state.t_slider, n_frames - 1)
+
+# Minute control: slider (or click on the timeline below).
+sc1, sc2 = st.columns([1, 14])
+with sc1:
+    if st.button("⟲", width="stretch", help="Reset to minute 0"):
+        st.session_state.t_slider = 0
         st.rerun()
-with p2:
-    if st.button("Reset", width="stretch"):
-        st.session_state.is_playing = False
-        st.session_state.t_idx = 0
-        st.rerun()
-with p3:
-    speed = st.selectbox("Speed", ["1x", "2x", "5x"], index=0, label_visibility="collapsed")
-with p4:
-    slider_val = st.slider("Simulation Timestep", min_value=0, max_value=num_frames - 1, value=st.session_state.t_idx, label_visibility="collapsed")
-    if slider_val != st.session_state.t_idx:
-        st.session_state.t_idx = slider_val
-current_frame = frames[st.session_state.t_idx]
-ts = current_frame.get("timestamp", "")
-st.caption(f"Frame **{st.session_state.t_idx + 1} / {num_frames}** - `{ts}`")
-active_mode = "brain_on" if brain_on else "brain_off"
-retired_set = st.session_state.retired_sats
-active_eval = evaluate_frame(current_frame, targets, active_mode, retired_set)
-baseline_eval = evaluate_frame(current_frame, targets, "brain_off", retired_set)
-no_retire_eval = evaluate_frame(current_frame, targets, active_mode, set())
-render_kpi_cards(active_eval, baseline_eval, brain_on)
-st.divider()
-map_col, lab_col = st.columns([2.5, 1.3])
-with map_col:
-    fig = build_map_figure(satellites=active_eval["satellites"], targets=targets, covered_ids=active_eval["covered_ids"])
-    st.plotly_chart(fig)
-    render_events_feed(frames, st.session_state.t_idx)
-    render_target_table(active_eval)
-with lab_col:
-    render_retire_lab(satellites=active_eval["satellites"], eval_no_retire=no_retire_eval, eval_with_retire=active_eval, brain_on=brain_on, retire_lab_data=runlog.get("retirement_lab"))
-st.divider()
-timeline_fig = build_mission_timeline(frames=frames, targets=targets, retired_sats=retired_set, current_idx=st.session_state.t_idx)
-st.plotly_chart(timeline_fig)
-render_firms_and_p4_sections(bool(runlog.get("meta", {}).get("is_firms")))
-if st.session_state.is_playing:
-    delay_map = {"1x": 0.6, "2x": 0.3, "5x": 0.12}
-    time.sleep(delay_map[speed])
-    st.session_state.t_idx = (st.session_state.t_idx + 1) % num_frames
+with sc2:
+    t = st.slider("Snapshot minute", 0, n_frames - 1, key="t_slider", label_visibility="collapsed")
+
+frame = frame_at(primary, t)
+render_hero(primary["meta"], frame, primary_label)
+render_kpis(primary, key_of(primary), t, secondary if secondary is not primary else None,
+            key_of(secondary) if secondary else "", secondary_label)
+
+if view == "Side by side":
+    a, b = st.columns(2)
+    a.plotly_chart(build_map(log_on, t, "Brain ON", belief), width="stretch", key="map_on")
+    b.plotly_chart(build_map(log_off, t, "Brain OFF", belief), width="stretch", key="map_off")
+else:
+    st.plotly_chart(build_map(primary, t, primary_label, belief), width="stretch", key="map_main")
+st.caption("Press ▶ Play on the map for smooth playback. The slider above sets the snapshot used by the cards and panels; "
+           "click a marker on the timeline to jump to that moment.")
+render_status_strip(frame)
+
+st.markdown("##### Event timeline")
+clicked = render_timeline(primary, key_of(primary), t)
+if clicked is not None and clicked != st.session_state.last_click:
+    st.session_state.last_click = clicked
+    st.session_state.t_slider = min(clicked, n_frames - 1)
     st.rerun()
+
+tab_dec, tab_ev, tab_sat, tab_lab, tab_sum = st.tabs(
+    ["Decisions", "Events", "Satellites", "Retirement Lab", "Final comparison"])
+with tab_dec:
+    st.caption("Why the agent acted (routine OBSERVE actions hidden).")
+    render_decisions(decisions_upto(primary, t))
+with tab_ev:
+    render_events(events_upto(primary, t))
+with tab_sat:
+    render_satellite_table(frame)
+with tab_lab:
+    render_retirement_lab(primary, frame, weather)
+with tab_sum:
+    render_summary(log_on, log_off)
