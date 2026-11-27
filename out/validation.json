@@ -1,0 +1,466 @@
+[
+ {
+  "mode": "on",
+  "seed": 1,
+  "leak_localized_min": 16.0,
+  "fireE_localized_min": 26.0,
+  "fireW_localized_min": 3.0,
+  "fuel_kg": 1.3212178054097004,
+  "data_mb": 401.86000000000126,
+  "alerts": 5,
+  "mean_loc_error_km": 4.597343937884317,
+  "detection_latency_min": 1.9723502304147464,
+  "sats_lost": 0,
+  "uncontrolled_dead": 0,
+  "emergencies_handled": 6,
+  "emergencies": {
+   "landfill_leak_localized": true,
+   "wildfire_east_localized": true,
+   "wildfire_west_localized": true,
+   "no_debris_collision": true,
+   "dying_satellite_not_lost_uncontrolled": true,
+   "low_fuel_satellite_serviced": true
+  },
+  "invalid": {
+   "total": 0,
+   "by_type": {},
+   "examples": {}
+  },
+  "completed": true
+ },
+ {
+  "mode": "off",
+  "seed": 1,
+  "leak_localized_min": 126.0,
+  "fireE_localized_min": 79.0,
+  "fireW_localized_min": 47.0,
+  "fuel_kg": 1.2638723513770456,
+  "data_mb": 24840.0,
+  "alerts": 114,
+  "mean_loc_error_km": 14.008957283525044,
+  "detection_latency_min": 29.794642857142858,
+  "sats_lost": 0,
+  "uncontrolled_dead": 1,
+  "emergencies_handled": 4,
+  "emergencies": {
+   "landfill_leak_localized": true,
+   "wildfire_east_localized": true,
+   "wildfire_west_localized": true,
+   "no_debris_collision": true,
+   "dying_satellite_not_lost_uncontrolled": false,
+   "low_fuel_satellite_serviced": false
+  },
+  "invalid": {
+   "total": 0,
+   "by_type": {},
+   "examples": {}
+  },
+  "completed": true
+ },
+ {
+  "mode": "on",
+  "seed": 2,
+  "leak_localized_min": 14.0,
+  "fireE_localized_min": 27.0,
+  "fireW_localized_min": 88.0,
+  "fuel_kg": 1.295204867113949,
+  "data_mb": 329.8500000000005,
+  "alerts": 6,
+  "mean_loc_error_km": 11.197902726121422,
+  "detection_latency_min": 2.0135869565217392,
+  "sats_lost": 0,
+  "uncontrolled_dead": 0,
+  "emergencies_handled": 6,
+  "emergencies": {
+   "landfill_leak_localized": true,
+   "wildfire_east_localized": true,
+   "wildfire_west_localized": true,
+   "no_debris_collision": true,
+   "dying_satellite_not_lost_uncontrolled": true,
+   "low_fuel_satellite_serviced": true
+  },
+  "invalid": {
+   "total": 0,
+   "by_type": {},
+   "examples": {}
+  },
+  "completed": true
+ },
+ {
+  "mode": "off",
+  "seed": 2,
+  "leak_localized_min": 55.0,
+  "fireE_localized_min": 52.0,
+  "fireW_localized_min": 48.0,
+  "fuel_kg": 1.2638723513770456,
+  "data_mb": 24840.0,
+  "alerts": 118,
+  "mean_loc_error_km": 15.527491946907483,
+  "detection_latency_min": 31.304347826086957,
+  "sats_lost": 0,
+  "uncontrolled_dead": 1,
+  "emergencies_handled": 4,
+  "emergencies": {
+   "landfill_leak_localized": true,
+   "wildfire_east_localized": true,
+   "wildfire_west_localized": true,
+   "no_debris_collision": true,
+   "dying_satellite_not_lost_uncontrolled": false,
+   "low_fuel_satellite_serviced": false
+  },
+  "invalid": {
+   "total": 0,
+   "by_type": {},
+   "examples": {}
+  },
+  "completed": true
+ },
+ {
+  "mode": "on",
+  "seed": 3,
+  "leak_localized_min": null,
+  "fireE_localized_min": 19.0,
+  "fireW_localized_min": 1.0,
+  "fuel_kg": 1.1516240997235416,
+  "data_mb": 380.1200000000015,
+  "alerts": 5,
+  "mean_loc_error_km": 12.551331651195166,
+  "detection_latency_min": 1.9142156862745099,
+  "sats_lost": 0,
+  "uncontrolled_dead": 0,
+  "emergencies_handled": 5,
+  "emergencies": {
+   "landfill_leak_localized": false,
+   "wildfire_east_localized": true,
+   "wildfire_west_localized": true,
+   "no_debris_collision": true,
+   "dying_satellite_not_lost_uncontrolled": true,
+   "low_fuel_satellite_serviced": true
+  },
+  "invalid": {
+   "total": 0,
+   "by_type": {},
+   "examples": {}
+  },
+  "completed": true
+ },
+ {
+  "mode": "off",
+  "seed": 3,
+  "leak_localized_min": 55.0,
+  "fireE_localized_min": 52.0,
+  "fireW_localized_min": 48.0,
+  "fuel_kg": 1.2638723513770456,
+  "data_mb": 24840.0,
+  "alerts": 117,
+  "mean_loc_error_km": 14.892181155367037,
+  "detection_latency_min": 25.31578947368421,
+  "sats_lost": 0,
+  "uncontrolled_dead": 1,
+  "emergencies_handled": 4,
+  "emergencies": {
+   "landfill_leak_localized": true,
+   "wildfire_east_localized": true,
+   "wildfire_west_localized": true,
+   "no_debris_collision": true,
+   "dying_satellite_not_lost_uncontrolled": false,
+   "low_fuel_satellite_serviced": false
+  },
+  "invalid": {
+   "total": 0,
+   "by_type": {},
+   "examples": {}
+  },
+  "completed": true
+ },
+ {
+  "mode": "on",
+  "seed": 4,
+  "leak_localized_min": 14.0,
+  "fireE_localized_min": 20.0,
+  "fireW_localized_min": 3.0,
+  "fuel_kg": 1.290414176986133,
+  "data_mb": 384.7500000000016,
+  "alerts": 5,
+  "mean_loc_error_km": 8.69820333165335,
+  "detection_latency_min": 2.27816091954023,
+  "sats_lost": 0,
+  "uncontrolled_dead": 0,
+  "emergencies_handled": 6,
+  "emergencies": {
+   "landfill_leak_localized": true,
+   "wildfire_east_localized": true,
+   "wildfire_west_localized": true,
+   "no_debris_collision": true,
+   "dying_satellite_not_lost_uncontrolled": true,
+   "low_fuel_satellite_serviced": true
+  },
+  "invalid": {
+   "total": 0,
+   "by_type": {},
+   "examples": {}
+  },
+  "completed": true
+ },
+ {
+  "mode": "off",
+  "seed": 4,
+  "leak_localized_min": 83.0,
+  "fireE_localized_min": 52.0,
+  "fireW_localized_min": 48.0,
+  "fuel_kg": 1.2638723513770456,
+  "data_mb": 23180.0,
+  "alerts": 117,
+  "mean_loc_error_km": 13.811571703116318,
+  "detection_latency_min": 28.35135135135135,
+  "sats_lost": 2,
+  "uncontrolled_dead": 1,
+  "emergencies_handled": 3,
+  "emergencies": {
+   "landfill_leak_localized": true,
+   "wildfire_east_localized": true,
+   "wildfire_west_localized": true,
+   "no_debris_collision": false,
+   "dying_satellite_not_lost_uncontrolled": false,
+   "low_fuel_satellite_serviced": false
+  },
+  "invalid": {
+   "total": 0,
+   "by_type": {},
+   "examples": {}
+  },
+  "completed": true
+ },
+ {
+  "mode": "on",
+  "seed": 5,
+  "leak_localized_min": 54.0,
+  "fireE_localized_min": 29.0,
+  "fireW_localized_min": 4.0,
+  "fuel_kg": 1.22247273590587,
+  "data_mb": 366.74000000000063,
+  "alerts": 6,
+  "mean_loc_error_km": 12.516218792029001,
+  "detection_latency_min": 2.2701421800947865,
+  "sats_lost": 0,
+  "uncontrolled_dead": 0,
+  "emergencies_handled": 6,
+  "emergencies": {
+   "landfill_leak_localized": true,
+   "wildfire_east_localized": true,
+   "wildfire_west_localized": true,
+   "no_debris_collision": true,
+   "dying_satellite_not_lost_uncontrolled": true,
+   "low_fuel_satellite_serviced": true
+  },
+  "invalid": {
+   "total": 0,
+   "by_type": {},
+   "examples": {}
+  },
+  "completed": true
+ },
+ {
+  "mode": "off",
+  "seed": 5,
+  "leak_localized_min": 83.0,
+  "fireE_localized_min": 53.0,
+  "fireW_localized_min": null,
+  "fuel_kg": 1.2638723513770456,
+  "data_mb": 24840.0,
+  "alerts": 102,
+  "mean_loc_error_km": 16.8576492992728,
+  "detection_latency_min": 29.574257425742573,
+  "sats_lost": 0,
+  "uncontrolled_dead": 1,
+  "emergencies_handled": 3,
+  "emergencies": {
+   "landfill_leak_localized": true,
+   "wildfire_east_localized": true,
+   "wildfire_west_localized": false,
+   "no_debris_collision": true,
+   "dying_satellite_not_lost_uncontrolled": false,
+   "low_fuel_satellite_serviced": false
+  },
+  "invalid": {
+   "total": 0,
+   "by_type": {},
+   "examples": {}
+  },
+  "completed": true
+ },
+ {
+  "mode": "on",
+  "seed": 6,
+  "leak_localized_min": 62.0,
+  "fireE_localized_min": 33.0,
+  "fireW_localized_min": 5.0,
+  "fuel_kg": 1.2300778338332061,
+  "data_mb": 375.33000000000106,
+  "alerts": 7,
+  "mean_loc_error_km": 10.057018589876348,
+  "detection_latency_min": 2.0935960591133007,
+  "sats_lost": 0,
+  "uncontrolled_dead": 0,
+  "emergencies_handled": 6,
+  "emergencies": {
+   "landfill_leak_localized": true,
+   "wildfire_east_localized": true,
+   "wildfire_west_localized": true,
+   "no_debris_collision": true,
+   "dying_satellite_not_lost_uncontrolled": true,
+   "low_fuel_satellite_serviced": true
+  },
+  "invalid": {
+   "total": 0,
+   "by_type": {},
+   "examples": {}
+  },
+  "completed": true
+ },
+ {
+  "mode": "off",
+  "seed": 6,
+  "leak_localized_min": 56.0,
+  "fireE_localized_min": 79.0,
+  "fireW_localized_min": null,
+  "fuel_kg": 1.2638723513770456,
+  "data_mb": 24840.0,
+  "alerts": 115,
+  "mean_loc_error_km": 14.382919763848152,
+  "detection_latency_min": 27.110091743119266,
+  "sats_lost": 0,
+  "uncontrolled_dead": 1,
+  "emergencies_handled": 3,
+  "emergencies": {
+   "landfill_leak_localized": true,
+   "wildfire_east_localized": true,
+   "wildfire_west_localized": false,
+   "no_debris_collision": true,
+   "dying_satellite_not_lost_uncontrolled": false,
+   "low_fuel_satellite_serviced": false
+  },
+  "invalid": {
+   "total": 0,
+   "by_type": {},
+   "examples": {}
+  },
+  "completed": true
+ },
+ {
+  "mode": "on",
+  "seed": 7,
+  "leak_localized_min": 2.0,
+  "fireE_localized_min": 49.0,
+  "fireW_localized_min": 9.0,
+  "fuel_kg": 1.3226574303630625,
+  "data_mb": 366.91000000000133,
+  "alerts": 5,
+  "mean_loc_error_km": 9.277680188137513,
+  "detection_latency_min": 2.1022443890274314,
+  "sats_lost": 0,
+  "uncontrolled_dead": 0,
+  "emergencies_handled": 6,
+  "emergencies": {
+   "landfill_leak_localized": true,
+   "wildfire_east_localized": true,
+   "wildfire_west_localized": true,
+   "no_debris_collision": true,
+   "dying_satellite_not_lost_uncontrolled": true,
+   "low_fuel_satellite_serviced": true
+  },
+  "invalid": {
+   "total": 0,
+   "by_type": {},
+   "examples": {}
+  },
+  "completed": true
+ },
+ {
+  "mode": "off",
+  "seed": 7,
+  "leak_localized_min": 56.0,
+  "fireE_localized_min": 52.0,
+  "fireW_localized_min": 119.0,
+  "fuel_kg": 1.2638723513770456,
+  "data_mb": 24840.0,
+  "alerts": 129,
+  "mean_loc_error_km": 17.673993630876065,
+  "detection_latency_min": 28.983739837398375,
+  "sats_lost": 0,
+  "uncontrolled_dead": 1,
+  "emergencies_handled": 4,
+  "emergencies": {
+   "landfill_leak_localized": true,
+   "wildfire_east_localized": true,
+   "wildfire_west_localized": true,
+   "no_debris_collision": true,
+   "dying_satellite_not_lost_uncontrolled": false,
+   "low_fuel_satellite_serviced": false
+  },
+  "invalid": {
+   "total": 0,
+   "by_type": {},
+   "examples": {}
+  },
+  "completed": true
+ },
+ {
+  "mode": "on",
+  "seed": 42,
+  "leak_localized_min": 58.0,
+  "fireE_localized_min": 48.0,
+  "fireW_localized_min": 3.0,
+  "fuel_kg": 1.1815065377032323,
+  "data_mb": 387.49000000000046,
+  "alerts": 5,
+  "mean_loc_error_km": 10.243409173406928,
+  "detection_latency_min": 1.9862700228832952,
+  "sats_lost": 0,
+  "uncontrolled_dead": 0,
+  "emergencies_handled": 6,
+  "emergencies": {
+   "landfill_leak_localized": true,
+   "wildfire_east_localized": true,
+   "wildfire_west_localized": true,
+   "no_debris_collision": true,
+   "dying_satellite_not_lost_uncontrolled": true,
+   "low_fuel_satellite_serviced": true
+  },
+  "invalid": {
+   "total": 0,
+   "by_type": {},
+   "examples": {}
+  },
+  "completed": true
+ },
+ {
+  "mode": "off",
+  "seed": 42,
+  "leak_localized_min": 163.0,
+  "fireE_localized_min": 79.0,
+  "fireW_localized_min": null,
+  "fuel_kg": 1.2638723513770456,
+  "data_mb": 24840.0,
+  "alerts": 86,
+  "mean_loc_error_km": 18.930426642879432,
+  "detection_latency_min": 26.88235294117647,
+  "sats_lost": 0,
+  "uncontrolled_dead": 1,
+  "emergencies_handled": 3,
+  "emergencies": {
+   "landfill_leak_localized": true,
+   "wildfire_east_localized": true,
+   "wildfire_west_localized": false,
+   "no_debris_collision": true,
+   "dying_satellite_not_lost_uncontrolled": false,
+   "low_fuel_satellite_serviced": false
+  },
+  "invalid": {
+   "total": 0,
+   "by_type": {},
+   "examples": {}
+  },
+  "completed": true
+ }
+]
